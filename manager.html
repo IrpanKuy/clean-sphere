@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="CleanSphere Pro: Manager Dashboard Overview">
+  <title>CleanSphere Pro - Manager Dashboard</title>
+  
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- SweetAlert2 CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  
+  <!-- Load component styles -->
+  <link rel="stylesheet" href="components/styles.css?v=1.0.2">
+</head>
+<body>
+
+  <div id="app" v-cloak>
+    
+    <!-- Fullscreen Initial Loader Overlay -->
+    <div class="initial-loader" v-if="isInitializing">
+      <div class="spinner-lg"></div>
+      <div class="loader-text">Memverifikasi Sesi...</div>
+    </div>
+    
+    <!-- Mobile Sidebar Backdrop Overlay -->
+    <div class="sidebar-backdrop" v-if="isSidebarOpen" @click="isSidebarOpen = false"></div>
+
+    <!-- Left Sidebar Component -->
+    <sidebar-navigation 
+      :current-user="currentUser" 
+      :active-menu="activeMenu"
+      :active-submenu="activeSubmenu"
+      :is-sidebar-open="isSidebarOpen"
+      @set-menu="setMenu"
+      @toggle-menu="toggleMenu"
+      @set-submenu="setSubmenu"
+      @logout="handleLogout"
+      @close-sidebar="isSidebarOpen = false"
+    ></sidebar-navigation>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      
+      <!-- Top Header Navbar -->
+      <header class="top-navbar">
+        <div class="navbar-left">
+          <button class="btn-hamburger" @click="isSidebarOpen = !isSidebarOpen">
+            ☰
+          </button>
+          <div class="navbar-title">{{ getMenuTitle() }}</div>
+        </div>
+        
+        <div class="navbar-actions">
+          <button class="btn-sync" @click="syncDataGlobal" :disabled="syncing">
+            <svg class="w-4 h-4 mr-1 text-primary animate-spin" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px; height:16px; display:inline-block;" v-if="syncing">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+            </svg>
+            <svg class="w-4 h-4 mr-1 text-primary" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px; height:16px; display:inline-block;" v-else>
+              <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+            </svg>
+            {{ syncing ? 'Syncing...' : 'Sync Data' }}
+          </button>
+        </div>
+      </header>
+
+      <!-- Workspace Area -->
+      <section class="workspace-area">
+        
+        <!-- Render menu 1: Dashboard Overview -->
+        <div v-if="activeSubmenu === 'overview'">
+          <dashboard-overview
+            :rooms-summary="roomsSummary"
+            :total-rooms="totalRooms"
+            :staff-active-count="staffActiveCount"
+            :average-kpi="averageKpi"
+            :critical-stock-alerts="criticalStockAlerts"
+            :recent-activities="recentActivities"
+          ></dashboard-overview>
+        </div>
+
+        <!-- Render menu 2 submenus -->
+        <div v-else-if="activeSubmenu === 'room-grid'">
+          <room-management-view
+            :rooms="appState.rooms"
+            :users="appState.users"
+            :status-history="appState.room_status_history"
+            @update-status="handleQuickUpdateStatus"
+            @add-room="handleAddNewRoom"
+            @update-room="handleEditRoomDetails"
+            @delete-room="handleDeleteRoomDetails"
+          ></room-management-view>
+        </div>
+
+        <div v-else-if="activeSubmenu === 'room-history'">
+          <room-history-view
+            :status-history="appState.room_status_history"
+            :users="appState.users"
+            :checklists="appState.room_checklist"
+            :rooms="appState.rooms"
+            @update-checklist="handleUpdateChecklistLog"
+          ></room-history-view>
+        </div>
+
+        <div v-else-if="activeSubmenu === 'room-assignments'">
+          <room-assignments-view
+            :assignments="appState.room_assignments"
+            :rooms="appState.rooms"
+            :users="appState.users"
+            @add-assignment="handleAddAssignment"
+            @update-assignment="handleUpdateAssignment"
+            @delete-assignment="handleDeleteAssignment"
+          ></room-assignments-view>
+        </div>
+
+        <!-- Fallback beautiful placeholder card for unbuilt pages -->
+        <div v-else style="display: flex; justify-content: center; align-items: center; height: 100%; color: var(--text-muted);">
+          <div style="text-align: center; padding: 40px; background-color: var(--white); border-radius: var(--radius-md); border: 1.5px dashed rgba(30, 58, 138, 0.15); width: 100%; max-width: 500px; box-shadow: var(--shadow-card);">
+            <div style="font-size: 56px; margin-bottom: 16px;">📋</div>
+            <h3 style="color: var(--primary); font-size: 18px; font-weight: 700;">{{ getMenuTitle().split(' > ').pop() }}</h3>
+            <p style="font-size: 13.5px; margin-top: 8px; line-height: 1.5; color: var(--text-muted);">Fitur ini sedang disiapkan dan diselaraskan secara bertahap sesuai kebutuhan operasional ERD & RACS.</p>
+          </div>
+        </div>
+
+      </section>
+    </main>
+
+    <!-- Floating Global Toasts -->
+    <div class="toast-container" v-if="toast.show">
+      <div :class="['toast', 'toast-' + toast.type]">
+        <span>{{ toast.message }}</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Load Vue 3 via CDN -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  
+  <!-- Load data.js (State & Client APIs) -->
+  <script src="data.js"></script>
+
+  <!-- Load Child Components -->
+  <script src="components/SidebarNavigation.js"></script>
+  <script src="components/DashboardOverview.js"></script>
+  <script src="components/ChecklistDetailViewer.js"></script>
+  <script src="components/ChecklistEditorModal.js"></script>
+  <script src="components/RoomHistoryView.js"></script>
+  <script src="components/RoomAssignmentsView.js"></script>
+  <script src="components/RoomManagementView.js"></script>
+
+  <script>
+    // =========================================================================
+    // VUE CORE APP INSTANCE
+    // =========================================================================
+    const { createApp, ref, reactive, computed, onMounted } = Vue;
+
+    createApp({
+      components: {
+        'sidebar-navigation': SidebarNavigation,
+        'dashboard-overview': DashboardOverview,
+        'room-management-view': RoomManagementView,
+        'room-history-view': RoomHistoryView,
+        'room-assignments-view': RoomAssignmentsView
+      },
+      setup() {
+        const activeMenu = ref(1);
+        const activeSubmenu = ref('overview');
+        const loading = ref(false);
+        const isInitializing = ref(true);
+        const isSidebarOpen = ref(false);
+
+        // Reactively pull state from data.js
+        const toast = reactive(appState.toast);
+        const syncing = computed(() => appState.syncing);
+        const currentUser = computed(() => appState.currentUser);
+
+        // Metrics computations
+        const totalRooms = computed(() => {
+          return appState.rooms.length || 20; // fallback default
+        });
+
+        const roomsSummary = computed(() => {
+          const summary = { VC: 0, VD: 0, OC: 0, OD: 0, OOO: 0 };
+          appState.rooms.forEach(r => {
+            const st = r.room_status;
+            if (st) {
+              summary[st] = (summary[st] || 0) + 1;
+            }
+          });
+          // Fallbacks for empty state simulation
+          if (appState.rooms.length === 0) {
+            summary.VC = 8;
+            summary.VD = 5;
+            summary.OC = 4;
+            summary.OD = 2;
+            summary.OOO = 1;
+          }
+          return summary;
+        });
+
+        const staffActiveCount = computed(() => {
+          // Count active users with role = staff
+          const staff = appState.users.filter(u => u.role === 'staff' && u.status === 'active');
+          return staff.length || 12; // fallback default
+        });
+
+        const averageKpi = computed(() => {
+          if (appState.room_checklist.length === 0) return 85; // default fallback
+          const total = appState.room_checklist.reduce((sum, item) => sum + (item.kpi_score || 0), 0);
+          return Math.round(total / appState.room_checklist.length);
+        });
+
+        const criticalStockAlerts = computed(() => {
+          return appState.inventory
+            .filter(item => item.stock_current < item.min_stock)
+            .map(item => item.item_name);
+        });
+
+        // Simulate recent activities for dashboard view
+        const recentActivities = computed(() => {
+          const list = [];
+          
+          // 1. Process room checklists completed today
+          appState.room_checklist.slice(-3).forEach(c => {
+            list.push({
+              id: 'rc_' + c.checklist_id,
+              staff_name: getStaffNameById(c.staff_id),
+              activity: `Pembersihan Kamar ${c.room_number}`,
+              timestamp: c.end_time ? formatHM(c.end_time) : 'Hari Ini',
+              details: `Selesai dalam ${c.duration_minutes || 0} menit.`,
+              status: 'Completed'
+            });
+          });
+
+          // 2. Process attendance clock ins
+          appState.attendance.slice(-2).forEach(a => {
+            list.push({
+              id: 'att_' + a.attendance_id,
+              staff_name: getStaffNameById(a.user_id),
+              activity: a.status === 'in' ? 'Clock-In (Absen Masuk)' : 'Clock-Out (Absen Pulang)',
+              timestamp: a.check_in_time || 'Hari Ini',
+              details: `Mengikuti Shift: ${getShiftNameById(a.shift_id)}`,
+              status: 'Done'
+            });
+          });
+
+          // 3. Fallbacks to present realistic design if spreadsheet is empty
+          if (list.length === 0) {
+            list.push(
+              { id: 1, staff_name: 'Budi Santoso', activity: 'Clock-In (Absen Masuk)', timestamp: '07:05 WIB', details: 'Mengikuti Shift Pagi', status: 'Done' },
+              { id: 2, staff_name: 'Dewi Lestari', activity: 'Pembersihan Kamar 104', timestamp: '08:24 WIB', details: 'Selesai dalam 18 menit.', status: 'Completed' },
+              { id: 3, staff_name: 'Budi Santoso', activity: 'Pembersihan Kamar 101', timestamp: '08:45 WIB', details: 'Selesai dalam 22 menit.', status: 'Completed' }
+            );
+          }
+
+          return list;
+        });
+
+        // Helper string mappings
+        const getStaffNameById = (id) => {
+          const user = appState.users.find(u => u.user_id === id);
+          return user ? user.name : id;
+        };
+
+        const getShiftNameById = (id) => {
+          const s = appState.shifts.find(sh => sh.shift_id === id);
+          return s ? s.shift_name : id;
+        };
+
+        const formatHM = (isoStr) => {
+          const date = new Date(isoStr);
+          if (isNaN(date.getTime())) return "";
+          return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')} WIB`;
+        };
+
+        // --- Menu & Submenu handling ---
+        const setMenu = (menuId, defaultSubmenu) => {
+          activeMenu.value = menuId;
+          activeSubmenu.value = defaultSubmenu;
+          isSidebarOpen.value = false; // close overlay on mobile
+        };
+
+        const toggleMenu = (menuId, defaultSubmenu) => {
+          if (activeMenu.value === menuId) {
+            activeMenu.value = null; // collapse
+          } else {
+            activeMenu.value = menuId;
+            activeSubmenu.value = defaultSubmenu;
+          }
+        };
+
+        const setSubmenu = (submenuKey) => {
+          activeSubmenu.value = submenuKey;
+          isSidebarOpen.value = false; // close overlay on mobile
+        };
+
+        const getMenuTitle = () => {
+          switch (activeSubmenu.value) {
+            case 'overview': return 'Dashboard Utama';
+            case 'room-grid': return 'Room Control Sheets > Room Grid View';
+            case 'room-history': return 'Room Control Sheets > Riwayat Status Kamar';
+            case 'room-assignments': return 'Room Control Sheets > Tugas Staff';
+            case 'areas-data': return 'Area Control Sheets > Data Area';
+            case 'area-shifts': return 'Area Control Sheets > Konfigurasi Shift Area';
+            case 'staff-area-tasks': return 'Area Control Sheets > Penugasan Staf Area';
+            case 'area-tasks-daily': return 'Area Control Sheets > Laporan Harian Area';
+            case 'inventory-stock': return 'Manajemen Inventaris > Stok Barang';
+            case 'inventory-log': return 'Manajemen Inventaris > Log Transaksi Jurnal';
+            case 'inventory-categories': return 'Manajemen Inventaris > Konfigurasi Kategori';
+            case 'housekeeping-projects': return 'HouseKeeping Projects > HouseKeeping Project';
+            case 'staff-work-projects': return 'HouseKeeping Projects > Proyek Pekerjaan Staff';
+            case 'staff-accounts': return 'Pengaturan Staff & Shift > Data Karyawan & Akun';
+            case 'leave-approvals': return 'Pengaturan Staff & Shift > Persetujuan Izin & Cuti';
+            case 'shift-config': return 'Pengaturan Staff & Shift > Shift Kerja';
+            case 'attendance-kpi-report': return 'Pengaturan Staff & Shift > Laporan Absensi & KPI';
+            case 'app-settings': return 'Pengaturan > Konfigurasi Sistem';
+            default: return 'CleanSphere Pro';
+          }
+        };
+
+        // Load spreadsheet data
+        const syncDataGlobal = async () => {
+          loading.value = true;
+          await fetchDataFromServer();
+          loading.value = false;
+        };
+
+        // Room Operations Handlers
+        const handleQuickUpdateStatus = async (roomNumber, status, remarks) => {
+          await updateRoomStatusLocal(roomNumber, status, remarks);
+        };
+
+        const handleUpdateChecklistLog = async (checklistId, tasksCompleted, linenChanged, refills, kpiScore, extraData) => {
+          await updateRoomChecklistLocal(checklistId, tasksCompleted, linenChanged, refills, kpiScore, extraData);
+        };
+
+        const handleAddNewRoom = async (roomNumber, status, checklistConfig, remarks) => {
+          await addRoomLocal(roomNumber, status, checklistConfig, remarks);
+        };
+
+        const handleEditRoomDetails = async (oldRoomNumber, newRoomNumber, status, checklistConfig, remarks) => {
+          await updateRoomLocal(oldRoomNumber, newRoomNumber, status, checklistConfig, remarks);
+        };
+
+        const handleDeleteRoomDetails = async (roomNumber) => {
+          await deleteRoomLocal(roomNumber);
+        };
+
+        // Room Assignments Handlers
+        const handleAddAssignment = async (date, roomNumber, staffId, statusFrom, statusTo, remarks) => {
+          await addRoomAssignmentLocal(date, roomNumber, staffId, statusFrom, statusTo, remarks);
+        };
+
+        const handleUpdateAssignment = async (id, date, roomNumber, staffId, statusFrom, statusTo, remarks, status) => {
+          await updateRoomAssignmentLocal(id, date, roomNumber, staffId, statusFrom, statusTo, remarks, status);
+        };
+
+        const handleDeleteAssignment = async (id) => {
+          await deleteRoomAssignmentLocal(id);
+        };
+
+        // Logout
+        const handleLogout = () => {
+          logoutUser();
+          const isGAS = window.location.hostname.includes("google.com") || window.location.hostname.includes("googleusercontent.com");
+          if (isGAS) {
+            window.location.href = GAS_URL;
+          } else {
+            window.location.href = "Index.html";
+          }
+        };
+
+        // Check login on startup
+        onMounted(async () => {
+          const loggedIn = await checkAutoLogin();
+          isInitializing.value = false;
+
+          // Force redirect if not manager
+          if (!loggedIn || !appState.currentUser || appState.currentUser.role !== 'manager') {
+            const isGAS = window.location.hostname.includes("google.com") || window.location.hostname.includes("googleusercontent.com");
+            if (isGAS) {
+              window.location.href = GAS_URL;
+            } else {
+              window.location.href = "Index.html";
+            }
+          }
+        });
+
+        return {
+          activeMenu,
+          activeSubmenu,
+          loading,
+          isInitializing,
+          isSidebarOpen,
+          toast,
+          syncing,
+          currentUser,
+          appState,
+
+          // Metrics
+          totalRooms,
+          roomsSummary,
+          staffActiveCount,
+          averageKpi,
+          criticalStockAlerts,
+          recentActivities,
+
+          // Navigation/Control actions
+          setMenu,
+          toggleMenu,
+          setSubmenu,
+          getMenuTitle,
+          syncDataGlobal,
+          handleLogout,
+
+           // Room operations
+          handleQuickUpdateStatus,
+          handleUpdateChecklistLog,
+          handleAddNewRoom,
+          handleEditRoomDetails,
+          handleDeleteRoomDetails,
+
+          // Room assignments operations
+          handleAddAssignment,
+          handleUpdateAssignment,
+          handleDeleteAssignment
+        };
+      }
+    }).mount('#app');
+  </script>
+</body>
+</html>
