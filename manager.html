@@ -14,21 +14,57 @@
   <!-- SweetAlert2 CDN -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   
-  <!-- Load component styles -->
-  <link rel="stylesheet" href="components/styles.css?v=1.0.2">
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+      tailwind.config = {
+          theme: {
+              extend: {
+                  colors: {
+                      primary: {
+                          navy: '#1E3A8A',
+                          royal: '#2563EB',
+                          dark: '#0F172A',
+                          hover: '#1E293B'
+                      },
+                      accent: {
+                          blue: '#3B82F6',
+                          light: '#EFF6FF'
+                      },
+                      status: {
+                          dirty: '#EF4444',
+                          clean: '#10B981',
+                          occupied: '#3B82F6',
+                          warning: '#F59E0B'
+                      }
+                  },
+                  fontFamily: {
+                      sans: ['Inter', 'sans-serif'],
+                  }
+              }
+          }
+      }
+  </script>
+  <style type="text/tailwindcss">
+      @layer utilities {
+          [v-cloak] {
+              display: none !important;
+          }
+      }
+  </style>
 </head>
-<body>
+<body class="bg-slate-50 text-slate-900 min-h-screen flex overflow-hidden font-sans">
 
-  <div id="app" v-cloak>
+  <div id="app" class="flex w-full h-screen" v-cloak>
     
     <!-- Fullscreen Initial Loader Overlay -->
-    <div class="initial-loader" v-if="isInitializing">
-      <div class="spinner-lg"></div>
-      <div class="loader-text">Memverifikasi Sesi...</div>
+    <div class="fixed inset-0 bg-slate-50 flex flex-col justify-center items-center z-[99999] gap-4" v-if="isInitializing">
+      <div class="w-12 h-12 border-4 border-slate-200 border-t-primary-navy rounded-full animate-spin"></div>
+      <div class="text-[15px] font-semibold text-primary-navy tracking-tight">Memverifikasi Sesi...</div>
     </div>
     
     <!-- Mobile Sidebar Backdrop Overlay -->
-    <div class="sidebar-backdrop" v-if="isSidebarOpen" @click="isSidebarOpen = false"></div>
+    <div class="fixed inset-0 bg-slate-900/50 z-[998] lg:hidden" v-if="isSidebarOpen" @click="isSidebarOpen = false"></div>
 
     <!-- Left Sidebar Component -->
     <sidebar-navigation 
@@ -44,23 +80,30 @@
     ></sidebar-navigation>
 
     <!-- Main Content Area -->
-    <main class="main-content">
+    <main class="flex-grow flex flex-col h-screen overflow-hidden">
       
       <!-- Top Header Navbar -->
-      <header class="top-navbar">
-        <div class="navbar-left">
-          <button class="btn-hamburger" @click="isSidebarOpen = !isSidebarOpen">
+      <header class="h-[80px] bg-white border-b border-slate-100 flex justify-between items-center px-4 md:px-10 shrink-0">
+        <div class="flex items-center gap-4">
+          <button class="lg:hidden bg-transparent border-none text-2xl text-slate-900 cursor-pointer p-1 outline-none" @click="isSidebarOpen = !isSidebarOpen">
             ☰
           </button>
-          <div class="navbar-title">{{ getMenuTitle() }}</div>
+          <div class="text-xl md:text-[22px] font-extrabold text-slate-900 tracking-tight">{{ getMenuTitle() }}</div>
         </div>
         
-        <div class="navbar-actions">
-          <button class="btn-sync" @click="syncDataGlobal" :disabled="syncing">
-            <svg class="w-4 h-4 mr-1 text-primary animate-spin" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px; height:16px; display:inline-block;" v-if="syncing">
+        <div class="flex items-center gap-4">
+          <button v-if="currentUser && (currentUser.role === 'admin' || currentUser.role === 'manager')" @click="generateDailyDataLocal" class="px-3 md:px-4.5 py-2.5 text-[13px] font-semibold bg-indigo-50 border-1.5 border-indigo-500/20 rounded-lg text-indigo-700 cursor-pointer flex items-center gap-2 transition-all duration-200 hover:bg-indigo-100 hover:-translate-y-[1px]">
+            <svg class="w-4 h-4 text-indigo-700" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Buat Data Harian
+          </button>
+          
+          <button class="px-3 md:px-4.5 py-2.5 text-[13px] font-semibold bg-accent-light border-1.5 border-blue-500/10 rounded-lg text-primary-navy cursor-pointer flex items-center gap-2 transition-all duration-200 hover:bg-blue-100 hover:-translate-y-[1px]" @click="syncDataGlobal" :disabled="syncing">
+            <svg class="w-4 h-4 text-primary-navy animate-spin" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" v-if="syncing">
               <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
             </svg>
-            <svg class="w-4 h-4 mr-1 text-primary" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px; height:16px; display:inline-block;" v-else>
+            <svg class="w-4 h-4 text-primary-navy" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" v-else>
               <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
             </svg>
             {{ syncing ? 'Syncing...' : 'Sync Data' }}
@@ -69,7 +112,7 @@
       </header>
 
       <!-- Workspace Area -->
-      <section class="workspace-area">
+      <section class="flex-grow p-4 md:p-10 overflow-y-auto">
         
         <!-- Render menu 1: Dashboard Overview -->
         <div v-if="activeSubmenu === 'overview'">
@@ -149,12 +192,42 @@
           ></staff-management-view>
         </div>
 
+        <div v-else-if="activeSubmenu === 'app-settings'">
+          <app-settings-view
+            :settings="appState.settings"
+            :current-user="appState.currentUser"
+            @update-settings="handleUpdateSettings"
+            @update-admin="handleUpdateAdmin"
+          ></app-settings-view>
+        </div>
+
+        <div v-else-if="activeSubmenu === 'housekeeping-master' || activeSubmenu === 'housekeeping-instances'">
+          <housekeeping-projects-view
+            :sub-tab="activeSubmenu"
+            :masters="appState.housekeeping_project_master"
+            :instances="appState.housekeeping_projects"
+            :users="appState.users"
+            @add-master="handleAddHouseKeepingMaster"
+            @update-master="handleUpdateHouseKeepingMaster"
+            @update-instance="handleUpdateHouseKeepingProject"
+          ></housekeeping-projects-view>
+        </div>
+
+        <div v-else-if="activeSubmenu === 'staff-work-projects'">
+          <staff-work-projects-view
+            :projects="appState.staff_work_projects"
+            :users="appState.users"
+            @add-project="handleAddStaffWorkProject"
+            @update-project="handleUpdateStaffWorkProject"
+          ></staff-work-projects-view>
+        </div>
+
         <!-- Fallback beautiful placeholder card for unbuilt pages -->
-        <div v-else style="display: flex; justify-content: center; align-items: center; height: 100%; color: var(--text-muted);">
-          <div style="text-align: center; padding: 40px; background-color: var(--white); border-radius: var(--radius-md); border: 1.5px dashed rgba(30, 58, 138, 0.15); width: 100%; max-width: 500px; box-shadow: var(--shadow-card);">
-            <div style="font-size: 56px; margin-bottom: 16px;">📋</div>
-            <h3 style="color: var(--primary); font-size: 18px; font-weight: 700;">{{ getMenuTitle().split(' > ').pop() }}</h3>
-            <p style="font-size: 13.5px; margin-top: 8px; line-height: 1.5; color: var(--text-muted);">Fitur ini sedang disiapkan dan diselaraskan secara bertahap sesuai kebutuhan operasional ERD & RACS.</p>
+        <div v-else class="flex justify-center items-center h-full text-slate-500">
+          <div class="text-center p-10 bg-white rounded-xl border-1.5 border-dashed border-blue-900/15 w-full max-w-[500px] shadow-lg">
+            <div class="text-[56px] mb-4">📋</div>
+            <h3 class="text-primary-navy text-[18px] font-bold">{{ getMenuTitle().split(' > ').pop() }}</h3>
+            <p class="text-[13.5px] mt-2 leading-relaxed text-slate-500">Fitur ini sedang disiapkan dan diselaraskan secara bertahap sesuai kebutuhan operasional ERD & RACS.</p>
           </div>
         </div>
 
@@ -162,8 +235,12 @@
     </main>
 
     <!-- Floating Global Toasts -->
-    <div class="toast-container" v-if="toast.show">
-      <div :class="['toast', 'toast-' + toast.type]">
+    <div class="fixed top-5 right-5 z-[99999] flex flex-col gap-2.5 pointer-events-none" v-if="toast.show">
+      <div :class="['px-5 py-3.5 rounded-lg text-white text-[13px] font-semibold shadow-lg flex items-center gap-2.5 pointer-events-auto transition-all animate-[slideIn_0.3s_ease]', 
+        toast.type === 'pending' ? 'bg-primary-hover border-l-4 border-accent-blue' : 
+        toast.type === 'success' ? 'bg-status-clean' : 
+        toast.type === 'error' ? 'bg-status-dirty' : 
+        'bg-primary-navy']">
         <span>{{ toast.message }}</span>
       </div>
     </div>
@@ -186,6 +263,9 @@
   <script src="components/RoomManagementView.js"></script>
   <script src="components/InventoryManagementView.js"></script>
   <script src="components/StaffManagementView.js"></script>
+  <script src="components/AppSettingsView.js"></script>
+  <script src="components/HouseKeepingProjectsView.js"></script>
+  <script src="components/StaffWorkProjectsView.js"></script>
 
   <script>
     // =========================================================================
@@ -201,7 +281,10 @@
         'room-history-view': RoomHistoryView,
         'room-assignments-view': RoomAssignmentsView,
         'inventory-management-view': InventoryManagementView,
-        'staff-management-view': StaffManagementView
+        'staff-management-view': StaffManagementView,
+        'app-settings-view': AppSettingsView,
+        'housekeeping-projects-view': HouseKeepingProjectsView,
+        'staff-work-projects-view': StaffWorkProjectsView
       },
       setup() {
         const activeMenu = ref(1);
@@ -348,8 +431,9 @@
             case 'inventory-stock': return 'Manajemen Inventaris > Stok Barang';
             case 'inventory-log': return 'Manajemen Inventaris > Mutasi Stok';
             case 'inventory-categories': return 'Manajemen Inventaris > Konfigurasi Kategori';
-            case 'housekeeping-projects': return 'HouseKeeping Projects > HouseKeeping Project';
-            case 'staff-work-projects': return 'HouseKeeping Projects > Proyek Pekerjaan Staff';
+            case 'housekeeping-master': return 'HouseKeeping Projects > Master Proyek Rutin';
+            case 'housekeeping-instances': return 'HouseKeeping Projects > Daftar Tugas Proyek';
+            case 'staff-work-projects': return 'Project Pekerjaan Staff';
             case 'staff-accounts': return 'Pengaturan Staff & Shift > Data Karyawan & Akun';
             case 'leave-approvals': return 'Pengaturan Staff & Shift > Persetujuan Izin & Cuti';
             case 'shift-config': return 'Pengaturan Staff & Shift > Shift Kerja';
@@ -390,6 +474,23 @@
         // Room Assignments Handlers
         const handleAddAssignment = async (date, roomNumber, staffId, statusFrom, statusTo, remarks) => {
           await addRoomAssignmentLocal(date, roomNumber, staffId, statusFrom, statusTo, remarks);
+        };
+
+        // HouseKeeping & Staff Project Handlers
+        const handleAddHouseKeepingMaster = async (title, description, periodType, staffIds, startDate) => {
+          await addHouseKeepingMasterLocal(title, description, periodType, staffIds, startDate);
+        };
+        const handleUpdateHouseKeepingMaster = async (masterId, updates) => {
+          await updateHouseKeepingMasterLocal(masterId, updates);
+        };
+        const handleUpdateHouseKeepingProject = async (projectId, updates) => {
+          await updateHouseKeepingProjectLocal(projectId, updates);
+        };
+        const handleAddStaffWorkProject = async (title, description, period, staffId, date, photoBase64, photoName) => {
+          // Implement if needed or rely on existing handleSubmitStaffWorkProjectAction
+        };
+        const handleUpdateStaffWorkProject = async (projectId, updates) => {
+          // Update API
         };
 
         const handleUpdateAssignment = async (id, date, roomNumber, staffId, statusFrom, statusTo, remarks, status) => {
@@ -435,6 +536,17 @@
         };
         const handleUpdateShift = async (id, name, inTime, outTime, toleranceIn, toleranceOut, isActive) => {
           await updateShiftLocal(id, name, inTime, outTime, toleranceIn, toleranceOut, isActive);
+        };
+
+        // App Settings
+        const handleUpdateSettings = async (settingsData, callback) => {
+          await updateSettingsLocal(settingsData);
+          if (callback) callback();
+        };
+
+        const handleUpdateAdmin = async (adminData, callback) => {
+          await updateAdminCredentialsLocal(adminData);
+          if (callback) callback();
         };
 
         // Logout
@@ -516,7 +628,14 @@
           handleUpdateUser,
           handleApproveLeave,
           handleAddShift,
-          handleUpdateShift
+          handleUpdateShift,
+          handleUpdateSettings,
+          handleUpdateAdmin,
+          handleAddHouseKeepingMaster,
+          handleUpdateHouseKeepingMaster,
+          handleUpdateHouseKeepingProject,
+          handleAddStaffWorkProject,
+          handleUpdateStaffWorkProject
         };
       }
     }).mount('#app');

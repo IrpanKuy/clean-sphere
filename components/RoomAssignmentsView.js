@@ -1,6 +1,3 @@
-// =========================================================================
-// VUE COMPONENT: STAFF ROOM ASSIGNMENTS VIEW
-// =========================================================================
 const RoomAssignmentsView = {
   props: ['assignments', 'rooms', 'users'],
   emits: ['add-assignment', 'update-assignment', 'delete-assignment'],
@@ -108,31 +105,30 @@ const RoomAssignmentsView = {
     }
   },
   template: `
-    <div class="assignments-wrapper">
+    <div class="flex flex-col gap-6 w-full max-w-[1200px] mx-auto">
       
       <!-- Filter Row -->
-      <div class="grid-controls-row">
-        <div class="controls-left">
-          <div class="filter-field-inline flex items-center gap-2">
-            <span class="text-sm font-bold text-gray-700">Tanggal:</span>
-            <input type="date" v-model="filterDate" class="ctrl-select-filter">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
+          <div class="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
+            <span class="text-[13px] font-bold text-slate-700 whitespace-nowrap">Tanggal:</span>
+            <input type="date" v-model="filterDate" class="w-full sm:w-auto h-[42px] px-3.5 bg-white border border-slate-200 rounded-xl text-[13.5px] font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm">
             
             <!-- Button to clear date filter -->
             <button 
               @click="clearDateFilter" 
-              class="btn-sync flex items-center gap-1"
-              style="padding: 9px 12px; background-color: var(--accent-light); color: var(--primary); font-weight: 700; border-radius: var(--radius-sm); font-size: 12px; height: 35px;"
+              class="h-[42px] px-4 bg-blue-50 text-blue-600 font-bold text-[13px] rounded-xl hover:bg-blue-100 transition-colors inline-flex items-center justify-center shrink-0"
             >
-              <svg class="w-4 h-4 inline-block mr-0.5 text-blue-600" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="width: 14px; height: 14px;">
+              <svg class="w-4 h-4 mr-1 text-blue-600" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               Lihat Semua Tugas
             </button>
           </div>
 
-          <div class="filter-field-inline flex items-center gap-2">
-            <span class="text-sm font-bold text-gray-700">Petugas Staf:</span>
-            <select v-model="filterStaff" class="ctrl-select-filter">
+          <div class="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
+            <span class="text-[13px] font-bold text-slate-700 whitespace-nowrap">Petugas Staf:</span>
+            <select v-model="filterStaff" class="w-full sm:w-[180px] h-[42px] px-3.5 bg-white border border-slate-200 rounded-xl text-[13.5px] font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm">
               <option value="">Semua Staf</option>
               <option v-for="u in staffUsers" :key="u.user_id" :value="u.user_id">
                 {{ u.name }}
@@ -141,8 +137,8 @@ const RoomAssignmentsView = {
           </div>
         </div>
 
-        <button class="btn-add-room flex items-center gap-1.5" @click="openAddModal" style="display: inline-flex; align-items: center;">
-          <svg class="w-4 h-4 text-primary mr-1" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="width: 16px; height: 16px;">
+        <button class="w-full md:w-auto h-[42px] px-5 bg-white text-blue-600 border border-blue-100 font-bold text-[13px] rounded-xl shadow-sm hover:bg-blue-50 hover:border-blue-200 hover:-translate-y-0.5 transition-all outline-none inline-flex items-center justify-center shrink-0" @click="openAddModal">
+          <svg class="w-4 h-4 text-blue-600 mr-1" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
           </svg>
           Registrasi Penugasan Baru
@@ -150,44 +146,43 @@ const RoomAssignmentsView = {
       </div>
 
       <!-- Main Assignments Table -->
-      <div class="table-card">
-        <div class="table-responsive">
+      <div class="bg-white rounded-2xl shadow-[0_10px_25px_-5px_rgba(15,23,42,0.04)] border border-slate-100 flex flex-col w-full overflow-hidden">
+        <div class="overflow-x-auto w-full custom-scrollbar">
 
-          <table>
+          <table class="w-full min-w-[900px] border-collapse text-left">
           <thead>
             <tr>
-              <th>Tanggal Tugas</th>
-              <th>Kamar</th>
-              <th>Petugas Staf</th>
-              <th>Target Transisi</th>
-              <th>Catatan Kerja</th>
-              <th>Status Kerja</th>
-              <th>Aksi</th>
+              <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider first:rounded-tl-lg whitespace-nowrap">Tanggal Tugas</th>
+              <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Kamar</th>
+              <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Petugas Staf</th>
+              <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Target Transisi</th>
+              <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Catatan Kerja</th>
+              <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Status Kerja</th>
+              <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap last:rounded-tr-lg">Aksi</th>
             </tr>
           </thead>
-          <tbody>
-            <tr v-for="asg in filteredAssignments" :key="asg.assignment_id">
-              <td><strong>{{ asg.date }}</strong></td>
-              <td><strong>Kamar {{ asg.room_number }}</strong></td>
-              <td>{{ getStaffName(asg.staff_id) }}</td>
-              <td>
-                <span class="status-from-to">
+          <tbody class="divide-y divide-slate-100">
+            <tr v-for="asg in filteredAssignments" :key="asg.assignment_id" class="transition-colors hover:bg-slate-50/50">
+              <td class="py-3.5 px-4 align-middle"><strong class="text-[13.5px] font-bold text-slate-900">{{ asg.date }}</strong></td>
+              <td class="py-3.5 px-4 align-middle"><strong class="text-[13.5px] font-bold text-slate-900">Kamar {{ asg.room_number }}</strong></td>
+              <td class="py-3.5 px-4 align-middle text-[13.5px] font-medium text-slate-700">{{ getStaffName(asg.staff_id) }}</td>
+              <td class="py-3.5 px-4 align-middle">
+                <span class="inline-flex items-center gap-2 font-bold text-slate-600 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 text-[13px]">
                   {{ asg.target_status_from }} &rarr; {{ asg.target_status_to }}
                 </span>
               </td>
-              <td class="text-muted">{{ asg.remarks || '-' }}</td>
-              <td>
-                <span :class="['badge-status', getAssignmentBadgeClass(asg.status)]">
+              <td class="py-3.5 px-4 align-middle text-[13px] font-medium text-slate-500">{{ asg.remarks || '-' }}</td>
+              <td class="py-3.5 px-4 align-middle">
+                <span :class="['inline-flex items-center justify-center px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider border', asg.status === 'Completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : asg.status === 'In Progress' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-slate-100 text-slate-600 border-slate-200']">
                   {{ asg.status }}
                 </span>
               </td>
-              <td>
+              <td class="py-3.5 px-4 align-middle">
                 <button 
                   @click="openEdit(asg)" 
-                  class="btn-card-edit flex items-center gap-1"
-                  style="padding: 4px 8px; width: auto; display: inline-flex; align-items: center;"
+                  class="h-[32px] px-3 bg-white border border-slate-200 text-slate-600 font-bold text-[12px] rounded-lg hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200 transition-colors inline-flex items-center justify-center shadow-sm gap-1"
                 >
-                  <svg class="w-3.5 h-3.5 text-blue-600 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width: 13px; height: 13px;">
+                  <svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" />
                   </svg>
                   Edit
@@ -195,7 +190,7 @@ const RoomAssignmentsView = {
               </td>
             </tr>
             <tr v-if="filteredAssignments.length === 0">
-              <td colspan="7" class="text-center-placeholder">
+              <td colspan="7" class="py-12 px-4 text-center text-slate-400 text-sm font-medium bg-slate-50/30">
                 Tidak ada penugasan kerja terjadwal.
               </td>
             </tr>
@@ -206,142 +201,142 @@ const RoomAssignmentsView = {
       </div>
 
       <!-- Modal: Tambah Penugasan Baru -->
-      <div class="modal-overlay-v2" v-if="showAddModal">
-        <div class="modal-box-v2" style="max-width: 500px;">
-          <div class="modal-header-v2">
-            <h3>Registrasi Penugasan Baru</h3>
-            <button class="btn-close-modal" @click="showAddModal = false">
-              <svg style="width: 20px; height: 20px; color: var(--text-muted);" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+      <div class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto" v-if="showAddModal">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-[500px] flex flex-col relative">
+          <div class="flex items-center justify-between px-6 py-5 border-b border-slate-100">
+            <h3 class="text-lg font-extrabold text-slate-900">Registrasi Penugasan Baru</h3>
+            <button class="w-8 h-8 rounded-full flex items-center justify-center bg-slate-100 hover:bg-slate-200 transition-colors text-slate-500" @click="showAddModal = false">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
-          <form @submit.prevent="submitAdd" class="modal-body-v2">
-            <div class="modal-field">
-              <label>Tanggal Tugas</label>
-              <input type="date" v-model="newDate" required class="form-input">
+          <form @submit.prevent="submitAdd" class="flex flex-col gap-5 p-6 max-h-[75vh] overflow-y-auto custom-scrollbar">
+            <div class="flex flex-col gap-2">
+              <label class="text-[13px] font-bold text-slate-700">Tanggal Tugas</label>
+              <input type="date" v-model="newDate" required class="w-full h-[42px] px-3.5 bg-white border border-slate-200 rounded-xl text-[13.5px] font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm">
             </div>
 
-            <div class="modal-field">
-              <label>Kamar</label>
-              <select v-model="newRoomNumber" class="form-select" required>
+            <div class="flex flex-col gap-2">
+              <label class="text-[13px] font-bold text-slate-700">Kamar</label>
+              <select v-model="newRoomNumber" class="w-full h-[42px] px-3.5 bg-white border border-slate-200 rounded-xl text-[13.5px] font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm" required>
                 <option v-for="r in rooms" :key="r.room_number" :value="r.room_number">
                   Kamar {{ r.room_number }} ({{ r.room_status }})
                 </option>
               </select>
             </div>
 
-            <div class="modal-field">
-              <label>Petugas Staf</label>
-              <select v-model="newStaffId" class="form-select" required>
+            <div class="flex flex-col gap-2">
+              <label class="text-[13px] font-bold text-slate-700">Petugas Staf</label>
+              <select v-model="newStaffId" class="w-full h-[42px] px-3.5 bg-white border border-slate-200 rounded-xl text-[13.5px] font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm" required>
                 <option v-for="u in staffUsers" :key="u.user_id" :value="u.user_id">
                   {{ u.name }} ({{ u.user_id }})
                 </option>
               </select>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-              <div class="modal-field">
-                <label>Status Awal (From)</label>
-                <select v-model="newStatusFrom" class="form-select">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div class="flex flex-col gap-2">
+                <label class="text-[13px] font-bold text-slate-700">Status Awal (From)</label>
+                <select v-model="newStatusFrom" class="w-full h-[42px] px-3.5 bg-white border border-slate-200 rounded-xl text-[13.5px] font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm">
                   <option v-for="opt in statusOptions" :key="opt" :value="opt">{{ opt }}</option>
                 </select>
               </div>
-              <div class="modal-field">
-                <label>Status Target (To)</label>
-                <select v-model="newStatusTo" class="form-select">
+              <div class="flex flex-col gap-2">
+                <label class="text-[13px] font-bold text-slate-700">Status Target (To)</label>
+                <select v-model="newStatusTo" class="w-full h-[42px] px-3.5 bg-white border border-slate-200 rounded-xl text-[13.5px] font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm">
                   <option v-for="opt in statusOptions" :key="opt" :value="opt">{{ opt }}</option>
                 </select>
               </div>
             </div>
 
-            <div class="modal-field">
-              <label>Catatan Kerja / Keterangan</label>
-              <input type="text" v-model="newRemarks" placeholder="Contoh: Pembersihan AC, Ganti linen kasur" class="form-input">
+            <div class="flex flex-col gap-2">
+              <label class="text-[13px] font-bold text-slate-700">Catatan Kerja / Keterangan</label>
+              <input type="text" v-model="newRemarks" placeholder="Contoh: Pembersihan AC, Ganti linen kasur" class="w-full h-[42px] px-3.5 bg-white border border-slate-200 rounded-xl text-[13.5px] font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm">
             </div>
 
-            <div class="modal-actions-v2">
-              <button type="button" class="btn-cancel" @click="showAddModal = false">Batal</button>
-              <button type="submit" class="btn-confirm-add">Registrasikan</button>
+            <div class="flex items-center justify-end gap-3 pt-4 mt-2 border-t border-slate-100">
+              <button type="button" class="h-[42px] px-5 bg-white border border-slate-200 text-slate-600 font-bold text-[13px] rounded-xl hover:bg-slate-50 transition-colors" @click="showAddModal = false">Batal</button>
+              <button type="submit" class="h-[42px] px-6 bg-blue-600 hover:bg-blue-700 text-white font-bold text-[13px] rounded-xl shadow-[0_4px_10px_rgba(37,99,235,0.2)] transition-all">Registrasikan</button>
             </div>
           </form>
         </div>
       </div>
 
       <!-- Modal: Edit Penugasan -->
-      <div class="modal-overlay-v2" v-if="showEditModal">
-        <div class="modal-box-v2" style="max-width: 500px;">
-          <div class="modal-header-v2">
-            <h3>Edit Jadwal Tugas Staf</h3>
-            <button class="btn-close-modal" @click="showEditModal = false">
-              <svg style="width: 20px; height: 20px; color: var(--text-muted);" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+      <div class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto" v-if="showEditModal">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-[500px] flex flex-col relative">
+          <div class="flex items-center justify-between px-6 py-5 border-b border-slate-100">
+            <h3 class="text-lg font-extrabold text-slate-900">Edit Jadwal Tugas Staf</h3>
+            <button class="w-8 h-8 rounded-full flex items-center justify-center bg-slate-100 hover:bg-slate-200 transition-colors text-slate-500" @click="showEditModal = false">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
-          <form @submit.prevent="submitEdit" class="modal-body-v2">
-            <div class="modal-field">
-              <label>Tanggal Tugas</label>
-              <input type="date" v-model="editDate" required class="form-input">
+          <form @submit.prevent="submitEdit" class="flex flex-col gap-5 p-6 max-h-[75vh] overflow-y-auto custom-scrollbar">
+            <div class="flex flex-col gap-2">
+              <label class="text-[13px] font-bold text-slate-700">Tanggal Tugas</label>
+              <input type="date" v-model="editDate" required class="w-full h-[42px] px-3.5 bg-white border border-slate-200 rounded-xl text-[13.5px] font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm">
             </div>
 
-            <div class="modal-field">
-              <label>Kamar</label>
-              <select v-model="editRoomNumber" class="form-select" required>
+            <div class="flex flex-col gap-2">
+              <label class="text-[13px] font-bold text-slate-700">Kamar</label>
+              <select v-model="editRoomNumber" class="w-full h-[42px] px-3.5 bg-white border border-slate-200 rounded-xl text-[13.5px] font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm" required>
                 <option v-for="r in rooms" :key="r.room_number" :value="r.room_number">
                   Kamar {{ r.room_number }}
                 </option>
               </select>
             </div>
 
-            <div class="modal-field">
-              <label>Petugas Staf</label>
-              <select v-model="editStaffId" class="form-select" required>
+            <div class="flex flex-col gap-2">
+              <label class="text-[13px] font-bold text-slate-700">Petugas Staf</label>
+              <select v-model="editStaffId" class="w-full h-[42px] px-3.5 bg-white border border-slate-200 rounded-xl text-[13.5px] font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm" required>
                 <option v-for="u in staffUsers" :key="u.user_id" :value="u.user_id">
                   {{ u.name }}
                 </option>
               </select>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-              <div class="modal-field">
-                <label>Status Awal (From)</label>
-                <select v-model="editStatusFrom" class="form-select">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div class="flex flex-col gap-2">
+                <label class="text-[13px] font-bold text-slate-700">Status Awal (From)</label>
+                <select v-model="editStatusFrom" class="w-full h-[42px] px-3.5 bg-white border border-slate-200 rounded-xl text-[13.5px] font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm">
                   <option v-for="opt in statusOptions" :key="opt" :value="opt">{{ opt }}</option>
                 </select>
               </div>
-              <div class="modal-field">
-                <label>Status Target (To)</label>
-                <select v-model="editStatusTo" class="form-select">
+              <div class="flex flex-col gap-2">
+                <label class="text-[13px] font-bold text-slate-700">Status Target (To)</label>
+                <select v-model="editStatusTo" class="w-full h-[42px] px-3.5 bg-white border border-slate-200 rounded-xl text-[13.5px] font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm">
                   <option v-for="opt in statusOptions" :key="opt" :value="opt">{{ opt }}</option>
                 </select>
               </div>
             </div>
 
-            <div class="modal-field">
-              <label>Catatan Kerja</label>
-              <input type="text" v-model="editRemarks" class="form-input">
+            <div class="flex flex-col gap-2">
+              <label class="text-[13px] font-bold text-slate-700">Catatan Kerja</label>
+              <input type="text" v-model="editRemarks" class="w-full h-[42px] px-3.5 bg-white border border-slate-200 rounded-xl text-[13.5px] font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm">
             </div>
 
-            <div class="modal-field">
-              <label>Status Pengerjaan</label>
-              <select v-model="editStatus" class="form-select">
+            <div class="flex flex-col gap-2">
+              <label class="text-[13px] font-bold text-slate-700">Status Pengerjaan</label>
+              <select v-model="editStatus" class="w-full h-[42px] px-3.5 bg-white border border-slate-200 rounded-xl text-[13.5px] font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm">
                 <option value="Pending">Pending</option>
                 <option value="In Progress">In Progress</option>
                 <option value="Completed">Completed</option>
               </select>
             </div>
 
-            <div class="modal-actions-v2 flex-between">
-              <button type="button" class="btn-delete" @click="confirmDelete(editingId)">
-                <svg class="w-4 h-4 inline-block mr-1 text-red-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width: 14px; height: 14px; display: inline-block; vertical-align: text-top;">
+            <div class="flex items-center justify-between pt-4 mt-2 border-t border-slate-100">
+              <button type="button" class="h-[42px] px-4 bg-red-50 text-red-600 font-bold text-[13px] rounded-xl hover:bg-red-100 transition-colors inline-flex items-center gap-1.5" @click="confirmDelete(editingId)">
+                <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
                 </svg>
                 Hapus Jadwal
               </button>
               <div class="flex gap-2">
-                <button type="button" class="btn-cancel" @click="showEditModal = false">Batal</button>
-                <button type="submit" class="btn-confirm-save">Simpan Perubahan</button>
+                <button type="button" class="h-[42px] px-5 bg-white border border-slate-200 text-slate-600 font-bold text-[13px] rounded-xl hover:bg-slate-50 transition-colors" @click="showEditModal = false">Batal</button>
+                <button type="submit" class="h-[42px] px-6 bg-blue-600 hover:bg-blue-700 text-white font-bold text-[13px] rounded-xl shadow-[0_4px_10px_rgba(37,99,235,0.2)] transition-all">Simpan Perubahan</button>
               </div>
             </div>
           </form>

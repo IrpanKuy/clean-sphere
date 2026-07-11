@@ -158,70 +158,69 @@ const RoomHistoryView = {
     }
   },
   template: `
-    <div class="room-history-wrapper">
-      <div class="grid-controls-row">
-        <div class="search-box-wrapper">
-          <span class="search-glass">
-            <svg style="width: 16px; height: 16px; color: var(--text-muted);" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+    <div class="flex flex-col gap-6 w-full max-w-[1200px] mx-auto">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="relative w-full sm:w-[320px]">
+          <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.637 10.637z" />
             </svg>
           </span>
-          <input type="text" v-model="searchQuery" placeholder="Cari nomor kamar, status, atau petugas..." class="ctrl-search-input">
+          <input type="text" v-model="searchQuery" placeholder="Cari nomor kamar, status, atau petugas..." class="w-full h-[42px] pl-10 pr-4 bg-white border border-slate-200 rounded-xl text-[13.5px] font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm">
         </div>
       </div>
 
       <!-- Main Riwayat Status Kamar Table -->
-      <div class="table-card">
-        <div class="table-responsive">
-          <table>
+      <div class="bg-white rounded-2xl shadow-[0_10px_25px_-5px_rgba(15,23,42,0.04)] border border-slate-100 flex flex-col w-full overflow-hidden">
+        <div class="overflow-x-auto w-full custom-scrollbar">
+          <table class="w-full min-w-[900px] border-collapse text-left">
           <thead>
             <tr>
-              <th>Waktu Perubahan</th>
-              <th>Kamar</th>
-              <th>Status Lama</th>
-              <th>Status Baru</th>
-              <th>Diubah Oleh</th>
-              <th>Durasi Status</th>
-              <th style="width: 130px; text-align: center;">Aksi</th>
+              <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider first:rounded-tl-lg whitespace-nowrap">Waktu Perubahan</th>
+              <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Kamar</th>
+              <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Status Lama</th>
+              <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Status Baru</th>
+              <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Diubah Oleh</th>
+              <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Durasi Status</th>
+              <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap text-center last:rounded-tr-lg" style="width: 130px;">Aksi</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody class="divide-y divide-slate-100">
             <template v-for="log in filteredHistory" :key="log.history_id">
-              <tr>
-                <td><span class="font-compact">{{ formatTime(log.timestamp) }}</span></td>
-                <td><strong>Kamar {{ log.room_number }}</strong></td>
-                <td>
-                  <span class="history-badge" :style="{ backgroundColor: getStatusColor(log.old_status) }">
+              <tr class="transition-colors hover:bg-slate-50/30">
+                <td class="py-3.5 px-4 align-middle"><span class="tracking-tight text-[13.5px] font-semibold text-slate-700">{{ formatTime(log.timestamp) }}</span></td>
+                <td class="py-3.5 px-4 align-middle"><strong class="text-[13.5px] font-bold text-slate-900">Kamar {{ log.room_number }}</strong></td>
+                <td class="py-3.5 px-4 align-middle">
+                  <span class="inline-flex items-center justify-center px-2.5 py-1 rounded-md text-[11px] font-bold text-white tracking-wide uppercase shadow-sm" :style="{ backgroundColor: getStatusColor(log.old_status) }">
                     {{ log.old_status }}
                   </span>
                 </td>
-                <td>
-                  <span class="history-badge" :style="{ backgroundColor: getStatusColor(log.new_status) }">
+                <td class="py-3.5 px-4 align-middle">
+                  <span class="inline-flex items-center justify-center px-2.5 py-1 rounded-md text-[11px] font-bold text-white tracking-wide uppercase shadow-sm" :style="{ backgroundColor: getStatusColor(log.new_status) }">
                     {{ log.new_status }}
                   </span>
                 </td>
-                <td>{{ getStaffName(log.changed_by) }}</td>
-                <td>
-                  <span class="duration-text flex items-center gap-1" v-if="log.duration_minutes">
-                    <svg class="w-3.5 h-3.5 text-gray-500 inline mr-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:14px; height:14px; display:inline-block;">
+                <td class="py-3.5 px-4 text-[13.5px] font-medium text-slate-700 align-middle">{{ getStaffName(log.changed_by) }}</td>
+                <td class="py-3.5 px-4 align-middle">
+                  <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-50 border border-slate-200 text-[12px] font-bold text-slate-600 shadow-sm" v-if="log.duration_minutes">
+                    <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     {{ log.duration_minutes }} menit
                   </span>
-                  <span v-else>-</span>
+                  <span v-else class="text-slate-400">-</span>
                 </td>
-                <td style="white-space: nowrap; text-align: center;">
-                  <div style="display: inline-flex; align-items: center; gap: 8px;">
+                <td class="py-3.5 px-4 align-middle whitespace-nowrap text-center">
+                  <div class="inline-flex items-center gap-2">
                     <!-- Eye Icon Detail next to Edit button -->
                     <button 
                       v-if="getAssociatedChecklist(log)" 
                       @click="toggleRow(log.history_id)" 
-                      class="btn-eye-icon"
-                      :class="{ 'expanded-eye': isRowExpanded(log.history_id) }"
+                      class="w-[32px] h-[32px] rounded-lg border border-slate-200 bg-white text-slate-500 flex items-center justify-center hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-colors shadow-sm"
+                      :class="{ 'bg-blue-50 text-blue-600 border-blue-200': isRowExpanded(log.history_id) }"
                       :title="isRowExpanded(log.history_id) ? 'Tutup Detail' : 'Buka Detail'"
-                      style="display: inline-flex; align-items: center; justify-content: center; padding: 6px;"
                     >
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" style="width: 15px; height: 15px;">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
                         <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                       </svg>
@@ -230,32 +229,33 @@ const RoomHistoryView = {
                     <button 
                       v-if="getAssociatedChecklist(log)" 
                       @click="triggerEdit(getAssociatedChecklist(log))" 
-                      class="btn-card-edit flex items-center gap-1" 
-                      style="padding: 6px 10px; width: auto; display: inline-flex; align-items: center; margin: 0;"
+                      class="h-[32px] px-3 bg-white border border-slate-200 text-slate-600 font-bold text-[12px] rounded-lg hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200 transition-colors inline-flex items-center justify-center shadow-sm gap-1"
                     >
-                      <svg class="w-3.5 h-3.5 text-blue-600 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width: 13px; height: 13px;">
+                      <svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" />
                       </svg>
                       Edit
                     </button>
-                    <span v-else style="opacity: 0.3;">-</span>
+                    <span v-else class="text-slate-300 mx-auto">-</span>
                   </div>
                 </td>
               </tr>
 
               <!-- Accordion Dropdown Sub-Row -->
               <tr v-if="isRowExpanded(log.history_id) && getAssociatedChecklist(log)">
-                <td colspan="7" class="expanded-accordion-cell">
-                  <checklist-detail-viewer
-                    :checklist="getAssociatedChecklist(log)"
-                    :rooms="rooms"
-                    :users="users"
-                  ></checklist-detail-viewer>
+                <td colspan="7" class="p-0 bg-slate-50/50 border-b border-slate-200">
+                  <div class="p-6 border-l-4 border-l-blue-500">
+                    <checklist-detail-viewer
+                      :checklist="getAssociatedChecklist(log)"
+                      :rooms="rooms"
+                      :users="users"
+                    ></checklist-detail-viewer>
+                  </div>
                 </td>
               </tr>
             </template>
             <tr v-if="filteredHistory.length === 0">
-              <td colspan="7" class="text-center-placeholder">
+              <td colspan="7" class="py-12 px-4 text-center text-slate-400 text-sm font-medium bg-slate-50/30">
                 Belum ada riwayat perubahan status kamar tercatat.
               </td>
             </tr>

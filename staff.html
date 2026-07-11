@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>CleanSphere - Staff App</title>
+  
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+      tailwind.config = {
+          theme: {
+              extend: {
+                  colors: {
+                      primary: {
+                          navy: '#1E3A8A',
+                          royal: '#2563EB',
+                          dark: '#0F172A',
+                          hover: '#1E293B'
+                      },
+                      accent: {
+                          blue: '#3B82F6',
+                          light: '#EFF6FF'
+                      }
+                  },
+                  fontFamily: {
+                      sans: ['Inter', 'sans-serif'],
+                  }
+              }
+          }
+      }
+  </script>
+
+  <!-- Vue 3 CDN -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <!-- SweetAlert2 -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <style>
+    body {
+      background-color: #f1f5f9; /* slate-100 */
+      /* Prevent pull-to-refresh on mobile */
+      overscroll-behavior-y: none;
+    }
+    .app-container {
+      max-width: 480px; /* Tablet/large phone width */
+      margin: 0 auto;
+      min-height: 100vh;
+      background-color: #ffffff;
+      box-shadow: 0 0 20px rgba(0,0,0,0.05);
+      position: relative;
+      overflow-x: hidden;
+    }
+    
+    /* Smooth transitions for view switching */
+    .fade-enter-active, .fade-leave-active {
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+    .fade-enter-from, .fade-leave-to {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+  </style>
+</head>
+<body class="text-slate-800 antialiased font-sans">
+
+<div id="app" class="app-container flex flex-col">
+  
+  <!-- =============================== -->
+  <!-- 2. DASHBOARD VIEW               -->
+  <!-- =============================== -->
+  <div v-if="currentView === 'dashboard'" class="flex-1 flex flex-col bg-slate-50">
+    <!-- Header -->
+    <div class="bg-primary-navy pt-8 pb-16 px-6 relative rounded-b-[2.5rem] shadow-md z-10">
+      <div class="flex justify-between items-center mb-6">
+        <div class="text-white">
+          <p class="text-sm text-blue-200">Selamat bekerja,</p>
+          <h2 class="text-xl font-bold">{{ currentUser.name }}</h2>
+        </div>
+        <button @click="handleLogout" class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+        </button>
+      </div>
+      <div class="text-center text-white">
+        <div class="text-4xl font-bold tracking-tight mb-1">{{ currentTime }}</div>
+        <div class="text-sm text-blue-200">{{ currentDate }}</div>
+      </div>
+    </div>
+    
+    <!-- Main Content Area (Overlaps header) -->
+    <div class="px-6 -mt-8 relative z-20 flex-1 flex flex-col">
+      <!-- Attendance Card -->
+      <div class="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-slate-100 flex flex-col items-center">
+        <div class="w-full flex justify-between text-xs font-semibold text-slate-500 mb-6">
+          <div class="text-center">
+            <span class="block">Shift Anda</span>
+            <span class="text-primary-navy">{{ dummyShift.name }} ({{ dummyShift.check_in_time }} - {{ dummyShift.check_out_time }})</span>
+          </div>
+          <div class="text-center">
+            <span class="block">Status</span>
+            <span :class="attendanceStatus === 'Belum Absen' ? 'text-amber-500' : 'text-green-500'">{{ attendanceStatus }}</span>
+          </div>
+        </div>
+        
+        <!-- Giant Clock In / Out Button -->
+        <button 
+          @click="toggleAttendance" 
+          :disabled="!canClockIn && attendanceStatus === 'Belum Absen'"
+          :class="['w-40 h-40 rounded-full flex flex-col items-center justify-center text-white transition-all duration-300 shadow-xl shadow-opacity-40', 
+            attendanceStatus === 'Belum Absen' 
+              ? (canClockIn ? 'bg-gradient-to-tr from-blue-600 to-primary-royal shadow-blue-500/40 active:scale-95' : 'bg-slate-300 shadow-none cursor-not-allowed')
+              : 'bg-gradient-to-tr from-rose-500 to-rose-400 shadow-rose-500/40 active:scale-95']">
+          <svg class="w-10 h-10 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <span class="font-bold text-lg">{{ attendanceStatus === 'Belum Absen' ? 'Clock In' : 'Clock Out' }}</span>
+          <span v-if="!canClockIn && attendanceStatus === 'Belum Absen'" class="text-[10px] mt-1 font-medium bg-black/20 px-2 py-0.5 rounded-full">Belum waktunya</span>
+        </button>
+      </div>
+
+      <!-- Menu Grid -->
+      <h3 class="text-sm font-bold text-slate-700 mb-3 px-1">Menu Operasional</h3>
+      <div class="grid grid-cols-2 gap-3 mb-8">
+        
+        <button @click="navigate('room-control')" :disabled="attendanceStatus === 'Belum Absen'" :class="['flex flex-col items-center justify-center p-4 rounded-2xl border bg-white transition-all', attendanceStatus === 'Belum Absen' ? 'opacity-50 border-slate-200' : 'border-blue-100 hover:border-blue-300 hover:shadow-md active:scale-95 shadow-sm']">
+          <div class="w-12 h-12 rounded-full bg-blue-50 text-primary-royal flex items-center justify-center mb-3">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+          </div>
+          <span class="text-[13px] font-semibold text-slate-700 text-center leading-tight">Room Control</span>
+        </button>
+
+        <button @click="navigate('area-control')" :disabled="attendanceStatus === 'Belum Absen'" :class="['flex flex-col items-center justify-center p-4 rounded-2xl border bg-white transition-all', attendanceStatus === 'Belum Absen' ? 'opacity-50 border-slate-200' : 'border-indigo-100 hover:border-indigo-300 hover:shadow-md active:scale-95 shadow-sm']">
+          <div class="w-12 h-12 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center mb-3">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+          </div>
+          <span class="text-[13px] font-semibold text-slate-700 text-center leading-tight">Area Publik</span>
+        </button>
+
+        <button @click="navigate('housekeeping-projects')" :disabled="attendanceStatus === 'Belum Absen'" :class="['flex flex-col items-center justify-center p-4 rounded-2xl border bg-white transition-all', attendanceStatus === 'Belum Absen' ? 'opacity-50 border-slate-200' : 'border-emerald-100 hover:border-emerald-300 hover:shadow-md active:scale-95 shadow-sm']">
+          <div class="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+          </div>
+          <span class="text-[13px] font-semibold text-slate-700 text-center leading-tight">Proyek Rutin</span>
+        </button>
+
+        <button @click="navigate('staff-projects')" :disabled="attendanceStatus === 'Belum Absen'" :class="['flex flex-col items-center justify-center p-4 rounded-2xl border bg-white transition-all', attendanceStatus === 'Belum Absen' ? 'opacity-50 border-slate-200' : 'border-purple-100 hover:border-purple-300 hover:shadow-md active:scale-95 shadow-sm']">
+          <div class="w-12 h-12 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center mb-3">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+          </div>
+          <span class="text-[13px] font-semibold text-slate-700 text-center leading-tight">Proyek Staff</span>
+        </button>
+
+        <button @click="navigate('inventory')" :disabled="attendanceStatus === 'Belum Absen'" :class="['flex flex-col items-center justify-center p-4 rounded-2xl border bg-white transition-all', attendanceStatus === 'Belum Absen' ? 'opacity-50 border-slate-200' : 'border-amber-100 hover:border-amber-300 hover:shadow-md active:scale-95 shadow-sm']">
+          <div class="w-12 h-12 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mb-3">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+          </div>
+          <span class="text-[13px] font-semibold text-slate-700 text-center leading-tight">Pemakaian<br>Inventaris</span>
+        </button>
+
+        <button @click="navigate('leave')" :class="['flex flex-col items-center justify-center p-4 rounded-2xl border bg-white transition-all border-rose-100 hover:border-rose-300 hover:shadow-md active:scale-95 shadow-sm']">
+          <div class="w-12 h-12 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mb-3">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+          </div>
+          <span class="text-[13px] font-semibold text-slate-700 text-center leading-tight">Pengajuan<br>Izin / Cuti</span>
+        </button>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- =============================== -->
+  <!-- 3. ROOM CONTROL VIEW            -->
+  <!-- =============================== -->
+  <div v-else-if="currentView === 'room-control'" class="flex-1 flex flex-col bg-slate-50 relative">
+    <div class="bg-gradient-to-r from-primary-navy to-primary-royal px-5 py-5 flex items-center gap-4 text-white shadow-xl shadow-blue-900/10 z-10 relative rounded-b-3xl mb-2">
+      <button @click="currentView = 'dashboard'" class="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center hover:bg-white/30 transition-all active:scale-95 shadow-inner">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+      </button>
+      <div>
+        <h2 class="text-xl font-extrabold tracking-wide">Room Control</h2>
+        <p class="text-blue-100 text-xs font-medium">Manajemen Pembersihan Kamar</p>
+      </div>
+    </div>
+
+    <!-- Room List -->
+    <div v-if="!selectedRoom" class="p-5 flex-1 overflow-y-auto">
+      <div class="flex items-center justify-between mb-4">
+        <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Daftar Tugas Hari Ini</p>
+        <span class="bg-blue-100 text-blue-700 text-[10px] font-bold px-2.5 py-1 rounded-full">{{ dummyRooms.length }} Kamar</span>
+      </div>
+      
+      <div class="flex flex-col gap-4">
+        <div v-for="room in dummyRooms" :key="room.id" @click="openRoomDetail(room)" class="group bg-white rounded-2xl p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 active:scale-[0.98] transition-all duration-300 cursor-pointer relative overflow-hidden flex justify-between items-center hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:border-blue-100">
+          <div :class="['absolute top-0 left-0 w-1.5 h-full transition-colors', room.status === 'Completed' ? 'bg-emerald-500' : 'bg-gradient-to-b from-amber-400 to-orange-400']"></div>
+          
+          <div class="flex items-center gap-4 pl-2">
+            <div :class="['w-12 h-12 rounded-full flex items-center justify-center text-lg font-black shadow-inner', room.status === 'Completed' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-700 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors']">
+              {{ room.roomNumber }}
+            </div>
+            <div>
+              <p class="text-xs text-slate-400 font-medium flex items-center gap-1 mb-0.5">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                Batas Waktu
+              </p>
+              <h3 class="font-bold text-slate-700 text-sm">{{ room.deadline }}</h3>
+            </div>
+          </div>
+          
+          <div class="text-right flex flex-col items-end gap-2">
+            <span :class="['px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider', room.status === 'Completed' ? 'bg-emerald-100 text-emerald-700 shadow-sm shadow-emerald-100' : 'bg-amber-100 text-amber-700 shadow-sm shadow-amber-100']">
+              {{ room.status === 'Completed' ? 'Selesai' : 'Tertunda' }}
+            </span>
+            <svg class="w-5 h-5 text-slate-300 group-hover:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Room Detail (Timer & Checklist) -->
+    <div v-else class="flex-1 flex flex-col bg-slate-50 animate-[fadeIn_0.2s_ease-out]">
+      <!-- Sticky Detail Header -->
+      <div class="bg-white px-5 py-4 border-b border-slate-100 shadow-sm flex justify-between items-center z-10 sticky top-0">
+        <div>
+          <button @click="selectedRoom = null" class="text-[13px] font-bold text-slate-400 hover:text-primary-royal flex items-center gap-1.5 transition-colors mb-1">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+            Kembali
+          </button>
+          <div class="flex items-center gap-2">
+            <h3 class="font-black text-slate-800 text-2xl">Kamar {{ selectedRoom.roomNumber }}</h3>
+            <span v-if="selectedRoom.status === 'Completed'" class="bg-emerald-500 text-white w-5 h-5 rounded-full flex items-center justify-center">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+            </span>
+          </div>
+        </div>
+        <div class="bg-slate-50 px-4 py-2 rounded-xl border border-slate-100 text-right min-w-[100px]">
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Durasi</p>
+          <p :class="['text-xl font-mono font-bold transition-colors', isRoomTimerRunning ? 'text-primary-royal animate-pulse' : 'text-slate-700']">
+            {{ formatTimer(roomTimer) }}
+          </p>
+        </div>
+      </div>
+
+      <!-- Scrollable Content -->
+      <div class="flex-1 overflow-y-auto p-5 pb-24" :class="{'opacity-60 grayscale-[30%] pointer-events-none transition-all duration-500': !isRoomTimerRunning && selectedRoom.status !== 'Completed'}">
+        
+        <!-- Checklist Section -->
+        <div class="mb-8">
+          <div class="flex justify-between items-end mb-4">
+            <h4 class="text-sm font-extrabold text-slate-700">Tugas Pembersihan</h4>
+            <span class="text-xs font-bold text-slate-400">{{ completedChecklistCount }}/{{ dummyChecklist.length }} Selesai</span>
+          </div>
+          
+          <!-- Progress Bar -->
+          <div class="w-full bg-slate-200 rounded-full h-2 mb-5 overflow-hidden">
+            <div class="bg-gradient-to-r from-blue-500 to-primary-royal h-2 rounded-full transition-all duration-500 ease-out" :style="{ width: checklistProgress + '%' }"></div>
+          </div>
+
+          <div class="flex flex-col gap-3">
+            <label v-for="(task, i) in dummyChecklist" :key="i" :class="['flex items-center gap-4 p-4 rounded-xl border-2 transition-all cursor-pointer shadow-sm', task.done ? 'bg-blue-50/50 border-blue-200' : 'bg-white border-slate-100 hover:border-blue-100']">
+              <div class="relative flex items-center justify-center">
+                <input type="checkbox" v-model="task.done" class="peer appearance-none w-6 h-6 border-2 border-slate-300 rounded-lg checked:border-primary-royal checked:bg-primary-royal transition-all cursor-pointer">
+                <svg class="absolute w-4 h-4 text-white pointer-events-none opacity-0 peer-checked:opacity-100 peer-checked:scale-100 scale-50 transition-all duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+              </div>
+              <span class="text-sm font-semibold transition-colors duration-300" :class="task.done ? 'text-primary-navy' : 'text-slate-600'">{{ task.name }}</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Linen Section -->
+        <div class="mb-8 bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+          <h4 class="text-sm font-extrabold text-slate-700 mb-4 flex items-center gap-2">
+            <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+            Pencatatan Linen
+          </h4>
+          <div class="grid grid-cols-2 gap-5">
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
+              <label class="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">Linen In <span class="text-[10px] lowercase font-normal">(Bersih)</span></label>
+              <div class="relative">
+                <input type="number" v-model="selectedRoom.linenIn" class="w-full bg-white border-2 border-slate-200 rounded-lg p-3 text-lg font-bold text-slate-700 focus:border-primary-royal focus:ring-4 focus:ring-blue-50 transition-all outline-none text-center">
+              </div>
+            </div>
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
+              <label class="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">Linen Out <span class="text-[10px] lowercase font-normal">(Kotor)</span></label>
+              <div class="relative">
+                <input type="number" v-model="selectedRoom.linenOut" class="w-full bg-white border-2 border-slate-200 rounded-lg p-3 text-lg font-bold text-slate-700 focus:border-primary-royal focus:ring-4 focus:ring-blue-50 transition-all outline-none text-center">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="selectedRoom.status === 'Completed'" class="bg-gradient-to-r from-emerald-50 to-green-50 p-5 rounded-2xl border border-emerald-100 text-center shadow-sm">
+          <div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-3">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          </div>
+          <h4 class="font-bold text-emerald-800 text-lg mb-1">Kamar Selesai</h4>
+          <p class="text-sm font-medium text-emerald-600">Skor KPI Kebersihan: <strong>90 Poin</strong></p>
+        </div>
+
+      </div>
+
+      <!-- Action Buttons (Fixed at bottom) -->
+      <div class="absolute bottom-0 left-0 w-full p-5 bg-white/80 backdrop-blur-md border-t border-slate-100 z-20" v-if="selectedRoom.status !== 'Completed'">
+        <button v-if="!isRoomTimerRunning" @click="startRoomTimer" class="w-full bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white font-extrabold text-lg py-4 rounded-2xl shadow-[0_10px_20px_rgba(16,185,129,0.3)] transition-all active:scale-[0.98] flex justify-center items-center gap-3">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          Mulai Pengerjaan
+        </button>
+        <button v-else @click="stopRoomTimer" class="w-full bg-gradient-to-r from-rose-500 to-red-500 hover:from-rose-600 hover:to-red-600 text-white font-extrabold text-lg py-4 rounded-2xl shadow-[0_10px_20px_rgba(244,63,94,0.3)] transition-all active:scale-[0.98] flex justify-center items-center gap-3">
+          <svg class="w-6 h-6 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"></path></svg>
+          Selesai & Simpan (Stop)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =============================== -->
+  <!-- 4. HOUSEKEEPING PROJECTS VIEW   -->
+  <!-- =============================== -->
+  <div v-else-if="currentView === 'housekeeping-projects'" class="flex-1 flex flex-col bg-slate-50">
+    <div class="bg-primary-navy px-4 py-4 flex items-center gap-3 text-white shadow-md z-10 relative">
+      <button @click="currentView = 'dashboard'" class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+      </button>
+      <h2 class="text-lg font-bold">Proyek Rutin</h2>
+    </div>
+    <div class="p-4 flex-1 overflow-y-auto">
+      <div class="flex flex-col gap-4">
+        <div v-for="proj in dummyHouseKeeping" :key="proj.id" class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          <div :class="['w-full h-1', proj.status === 'Selesai' ? 'bg-green-500' : 'bg-amber-400']"></div>
+          <div class="p-4">
+            <div class="flex justify-between items-start mb-2">
+              <h3 class="font-bold text-slate-800 text-lg leading-tight">{{ proj.title }}</h3>
+              <span :class="['px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider', proj.status === 'Selesai' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700']">{{ proj.status }}</span>
+            </div>
+            <p class="text-xs text-slate-500 mb-3">{{ proj.desc }}</p>
+            <div class="text-[11px] font-semibold text-slate-400 mb-4 bg-slate-50 p-2 rounded-lg">
+              Periode: {{ proj.period }} &bull; Tgl: {{ proj.date }}
+            </div>
+            <div v-if="proj.status !== 'Selesai'">
+              <button @click="finishHouseKeeping(proj)" class="w-full bg-primary-royal hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg flex items-center justify-center gap-2 active:scale-95 transition-transform">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                Unggah Foto & Selesai
+              </button>
+            </div>
+            <div v-else class="text-center text-xs font-semibold text-green-600 bg-green-50 py-2 rounded-lg border border-green-200">
+              Tugas ini telah dilaporkan selesai
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =============================== -->
+  <!-- 5. STAFF WORK PROJECTS VIEW     -->
+  <!-- =============================== -->
+  <div v-else-if="currentView === 'staff-projects'" class="flex-1 flex flex-col bg-slate-50">
+    <div class="bg-gradient-to-r from-purple-800 to-purple-600 px-5 py-5 flex items-center gap-4 text-white shadow-xl shadow-purple-900/10 z-10 relative rounded-b-3xl mb-2">
+      <button @click="currentView = 'dashboard'" class="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center hover:bg-white/30 transition-all active:scale-95 shadow-inner">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+      </button>
+      <div>
+        <h2 class="text-xl font-extrabold tracking-wide">Proyek Staf</h2>
+        <p class="text-purple-200 text-xs font-medium">Inisiatif & Tugas Mandiri</p>
+      </div>
+    </div>
+    
+    <div class="p-5 flex flex-col gap-5 overflow-y-auto">
+      
+      <!-- New Project Action Button -->
+      <button v-if="!showAddStaffProject" @click="showAddStaffProject = true" class="w-full group bg-purple-50/50 border-2 border-purple-200 hover:border-purple-400 hover:bg-purple-50 text-purple-700 font-extrabold py-4 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-all border-dashed">
+        <div class="w-12 h-12 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 4v16m8-8H4"></path></svg>
+        </div>
+        Lapor Proyek Baru
+      </button>
+
+      <!-- New Project Form Card -->
+      <div v-else class="bg-white p-5 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-slate-100 animate-[fadeIn_0.3s_ease-out]">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="font-black text-slate-800 text-lg flex items-center gap-2">
+            <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+            Laporan Baru
+          </h3>
+          <button @click="showAddStaffProject = false" class="text-slate-400 hover:text-slate-600">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+          </button>
+        </div>
+        
+        <div class="flex flex-col gap-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider ml-1">Judul Pekerjaan</label>
+            <input type="text" v-model="newStaffProject.title" placeholder="Cth: Membersihkan saringan AC" class="w-full bg-slate-50 border-2 border-slate-100 rounded-xl p-3.5 text-sm font-semibold focus:border-purple-400 focus:bg-white focus:ring-4 focus:ring-purple-50 transition-all outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider ml-1">Deskripsi Detail</label>
+            <textarea v-model="newStaffProject.desc" placeholder="Jelaskan apa yang dikerjakan..." rows="3" class="w-full bg-slate-50 border-2 border-slate-100 rounded-xl p-3.5 text-sm font-semibold focus:border-purple-400 focus:bg-white focus:ring-4 focus:ring-purple-50 transition-all outline-none resize-none"></textarea>
+          </div>
+          
+          <!-- Mock Photo Upload -->
+          <div class="border-2 border-dashed border-slate-200 rounded-xl p-4 text-center cursor-pointer hover:bg-slate-50 transition-colors">
+            <svg class="w-8 h-8 mx-auto text-slate-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+            <span class="text-xs font-bold text-purple-600">Ketuk untuk Ambil Foto</span>
+          </div>
+
+          <button @click="submitStaffProject" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-extrabold py-4 rounded-xl mt-2 active:scale-95 transition-all shadow-[0_8px_20px_rgba(147,51,234,0.25)] flex justify-center items-center gap-2">
+            Kirim Laporan
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"></path></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Project List -->
+      <div class="mt-2">
+        <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 pl-1">Riwayat Proyek Anda</p>
+        <div class="flex flex-col gap-4">
+          <div v-for="proj in dummyStaffProjects" :key="proj.id" class="bg-white rounded-2xl p-5 shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-slate-100 flex flex-col gap-3 relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-16 h-16 bg-purple-50 rounded-bl-[100%] z-0"></div>
+            
+            <div class="flex items-start gap-3 relative z-10">
+              <div class="w-10 h-10 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center shrink-0 mt-0.5">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+              </div>
+              <div>
+                <h3 class="font-black text-slate-800 text-base leading-tight">{{ proj.title }}</h3>
+                <p class="text-xs text-slate-500 mt-1.5 leading-relaxed">{{ proj.desc }}</p>
+              </div>
+            </div>
+            
+            <div class="flex justify-between items-center mt-2 pt-3 border-t border-slate-50 relative z-10">
+              <span class="text-xs font-bold text-slate-400 flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                {{ proj.date }}
+              </span>
+              <span class="bg-purple-50 text-purple-700 px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider">{{ proj.period }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =============================== -->
+  <!-- 6. LEAVE REQUEST VIEW           -->
+  <!-- =============================== -->
+  <div v-else-if="currentView === 'leave'" class="flex-1 flex flex-col bg-slate-50">
+    <div class="bg-primary-navy px-4 py-4 flex items-center gap-3 text-white shadow-md z-10 relative">
+      <button @click="currentView = 'dashboard'" class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+      </button>
+      <h2 class="text-lg font-bold">Pengajuan Izin & Cuti</h2>
+    </div>
+    
+    <div class="p-4 flex-1 overflow-y-auto">
+      <form @submit.prevent="submitLeave" class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col gap-4 mb-6">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1.5">Jenis Izin</label>
+          <select class="w-full border border-slate-300 rounded-xl p-3 text-sm focus:border-primary-royal focus:outline-none">
+            <option>Sakit (Dengan Surat Dokter)</option>
+            <option>Cuti Tahunan</option>
+            <option>Izin Khusus</option>
+          </select>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1.5">Dari Tanggal</label>
+            <input type="date" required class="w-full border border-slate-300 rounded-xl p-3 text-sm focus:border-primary-royal focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1.5">Sampai Tanggal</label>
+            <input type="date" required class="w-full border border-slate-300 rounded-xl p-3 text-sm focus:border-primary-royal focus:outline-none">
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1.5">Alasan Detail</label>
+          <textarea rows="3" required class="w-full border border-slate-300 rounded-xl p-3 text-sm focus:border-primary-royal focus:outline-none"></textarea>
+        </div>
+        <button type="submit" class="w-full bg-rose-500 hover:bg-rose-600 text-white font-bold py-3.5 rounded-xl mt-2 active:scale-95 transition-transform flex items-center justify-center gap-2 shadow-lg shadow-rose-500/20">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+          Kirim Pengajuan
+        </button>
+      </form>
+
+      <h3 class="text-sm font-bold text-slate-700 mb-3 px-1">Riwayat Pengajuan</h3>
+      <div class="flex flex-col gap-3">
+        <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex justify-between items-center">
+          <div>
+            <h4 class="font-bold text-slate-800 text-sm">Sakit</h4>
+            <p class="text-xs text-slate-500">12 Ags 2026</p>
+          </div>
+          <span class="bg-amber-100 text-amber-700 px-2.5 py-1 rounded-md text-[11px] font-bold uppercase">Pending</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =============================== -->
+  <!-- 7. INVENTORY VIEW               -->
+  <!-- =============================== -->
+  <div v-else-if="currentView === 'inventory'" class="flex-1 flex flex-col bg-slate-50">
+    <div class="bg-gradient-to-r from-amber-600 to-orange-500 px-5 py-5 flex items-center gap-4 text-white shadow-xl shadow-amber-900/10 z-10 relative rounded-b-3xl mb-2">
+      <button @click="currentView = 'dashboard'" class="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center hover:bg-white/30 transition-all active:scale-95 shadow-inner">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+      </button>
+      <div>
+        <h2 class="text-xl font-extrabold tracking-wide">Inventaris</h2>
+        <p class="text-amber-100 text-xs font-medium">Catat Pemakaian Barang</p>
+      </div>
+    </div>
+    
+    <div class="p-5 flex-1 overflow-y-auto">
+      
+      <!-- Input Form -->
+      <form @submit.prevent="submitInventory" class="bg-white p-6 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.05)] border border-slate-100 flex flex-col gap-5 mb-8 relative overflow-hidden">
+        <div class="absolute -right-6 -top-6 w-24 h-24 bg-amber-50 rounded-full blur-2xl pointer-events-none"></div>
+        
+        <div>
+          <label class="block text-xs font-extrabold text-slate-500 mb-2 uppercase tracking-wider ml-1">Pilih Barang</label>
+          <div class="relative">
+            <select v-model="inventoryForm.item" class="w-full bg-slate-50 border-2 border-slate-100 rounded-xl p-4 text-sm font-bold text-slate-700 focus:border-amber-400 focus:bg-white focus:ring-4 focus:ring-amber-50 transition-all outline-none appearance-none cursor-pointer">
+              <option disabled value="">-- Pilih dari Gudang --</option>
+              <option value="Sabun Kaca">Sabun Pembersih Kaca (Botol)</option>
+              <option value="Pewangi Ruangan">Pewangi Ruangan (Pouch)</option>
+              <option value="Sapu Lidi">Sapu Lidi</option>
+              <option value="Sikat Lantai">Sikat Lantai</option>
+            </select>
+            <div class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </div>
+          </div>
+        </div>
+        
+        <div>
+          <label class="block text-xs font-extrabold text-slate-500 mb-2 uppercase tracking-wider ml-1">Jumlah Diambil</label>
+          <div class="flex items-center gap-3">
+            <input type="number" v-model="inventoryForm.qty" min="1" required class="flex-1 bg-slate-50 border-2 border-slate-100 rounded-xl p-4 text-xl font-black text-slate-700 focus:border-amber-400 focus:bg-white focus:ring-4 focus:ring-amber-50 transition-all outline-none text-center">
+            <span class="bg-amber-100 text-amber-800 px-4 py-4 rounded-xl font-bold text-sm h-full flex items-center">Pcs</span>
+          </div>
+        </div>
+        
+        <button type="submit" class="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-extrabold text-lg py-4 rounded-2xl mt-2 active:scale-95 transition-all shadow-[0_8px_20px_rgba(245,158,11,0.3)] flex justify-center items-center gap-2">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          Catat Pengambilan
+        </button>
+      </form>
+
+      <!-- History -->
+      <div>
+        <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 pl-1">Riwayat Pengambilan Hari Ini</p>
+        <div class="flex flex-col gap-3">
+          
+          <div v-if="inventoryHistory.length === 0" class="text-center py-6 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 text-sm font-semibold">
+            Belum ada pengambilan barang.
+          </div>
+
+          <div v-for="log in inventoryHistory" :key="log.id" class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center justify-between animate-[fadeIn_0.3s_ease-out]">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path></svg>
+              </div>
+              <div>
+                <h4 class="font-bold text-slate-800">{{ log.item }}</h4>
+                <p class="text-[11px] text-slate-400 font-medium">{{ log.time }}</p>
+              </div>
+            </div>
+            <div class="bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
+              <span class="font-black text-slate-700">{{ log.qty }}</span>
+              <span class="text-[10px] font-bold text-slate-400 ml-1">Pcs</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- =============================== -->
+  <!-- 8. PLACEHOLDER VIEWS            -->
+  <!-- =============================== -->
+  <div v-else-if="currentView !== 'dashboard'" class="flex-1 flex flex-col bg-slate-50">
+    <div class="bg-primary-navy px-4 py-4 flex items-center gap-3 text-white shadow-md z-10 relative">
+      <button @click="currentView = 'dashboard'" class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+      </button>
+      <h2 class="text-lg font-bold">
+        {{ currentView === 'area-control' ? 'Area Publik' : 
+           currentView === 'housekeeping-projects' ? 'Proyek Rutin' : 
+           currentView === 'staff-projects' ? 'Proyek Staff' : 
+           currentView === 'inventory' ? 'Inventaris' : 'Pengajuan Izin' }}
+      </h2>
+    </div>
+    
+    <!-- Placeholder Content -->
+    <div class="flex-1 flex flex-col items-center justify-center p-8 text-center">
+      <div class="w-24 h-24 mb-4 text-slate-300 flex items-center justify-center">
+        <!-- SVG Placeholder -->
+        <svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path>
+        </svg>
+      </div>
+      <h3 class="text-lg font-bold text-slate-700 mb-2">Dalam Pengerjaan</h3>
+      <p class="text-sm text-slate-500">Fitur ini sedang dibangun dan akan segera hadir pada iterasi berikutnya.</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const { createApp, ref, computed, onMounted, onUnmounted, watch } = Vue;
+
+createApp({
+  setup() {
+    const currentView = ref('dashboard');
+    
+    // Dummy user data (for testing UI, normally this comes from localStorage/API)
+    const currentUser = ref({ name: 'Budi Santoso' });
+    const dummyShift = ref({
+      name: 'Shift Pagi',
+      check_in_time: '08:00',
+      check_out_time: '16:00',
+      pre_check_in_minutes: 15
+    });
+    
+    const attendanceStatus = ref('Belum Absen'); // 'Belum Absen', 'Clocked In'
+    const currentTime = ref('');
+    const currentDate = ref('');
+    
+    // Timer updates
+    let timerId;
+    const updateTime = () => {
+      const now = new Date();
+      currentTime.value = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+      currentDate.value = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    };
+
+    onMounted(() => {
+      updateTime();
+      timerId = setInterval(updateTime, 1000);
+    });
+
+    onUnmounted(() => {
+      clearInterval(timerId);
+    });
+
+    // Check if can clock in based on logic: check_in_time - pre_check_in_minutes < current_time
+    const canClockIn = computed(() => {
+      // Dummy logic for demo: always true to allow testing UI easily. 
+      // In real implementation, parse '08:00', subtract minutes, compare with now.
+      return true; 
+    });
+
+    const handleLogout = () => {
+      Swal.fire({
+        title: 'Keluar?',
+        text: "Anda yakin ingin keluar dari sistem?",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#1E3A8A',
+        cancelButtonColor: '#EF4444',
+        confirmButtonText: 'Ya, Keluar'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          // Arahkan ke halaman utama index.html
+          window.location.href = 'index.html';
+        }
+      });
+    };
+
+    const toggleAttendance = () => {
+      if (attendanceStatus.value === 'Belum Absen') {
+        Swal.fire({
+          icon: 'success',
+          title: 'Clock In Berhasil',
+          text: 'Waktu kehadiran Anda telah dicatat.',
+          timer: 1500,
+          showConfirmButton: false
+        });
+        attendanceStatus.value = 'Clocked In';
+      } else {
+        Swal.fire({
+          title: 'Clock Out?',
+          text: "Anda yakin ingin menyelesaikan shift hari ini?",
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#10B981',
+          cancelButtonColor: '#d33',
+          confirmButtonText: 'Ya, Clock Out'
+        }).then((result) => {
+          if (result.isConfirmed) {
+            Swal.fire({
+              icon: 'success',
+              title: 'Clock Out Berhasil',
+              text: 'Shift hari ini selesai. Terima kasih!',
+              timer: 1500,
+              showConfirmButton: false
+            });
+            attendanceStatus.value = 'Belum Absen';
+          }
+        });
+      }
+    };
+
+    const navigate = (view) => {
+      currentView.value = view;
+    };
+
+    // --- Room Control Logic ---
+    const dummyRooms = ref([
+      { id: 1, roomNumber: '101', deadline: '10:00 - 11:00', status: 'Pending', linenIn: 0, linenOut: 0 },
+      { id: 2, roomNumber: '105', deadline: '11:15 - 12:00', status: 'Pending', linenIn: 0, linenOut: 0 },
+      { id: 3, roomNumber: '202', deadline: '13:00 - 14:00', status: 'Completed', linenIn: 2, linenOut: 2 }
+    ]);
+    const selectedRoom = ref(null);
+    const roomTimer = ref(0);
+    const isRoomTimerRunning = ref(false);
+    let intervalTimer = null;
+
+    const dummyChecklist = ref([
+      { name: 'Sapu & Pel Lantai', done: false },
+      { name: 'Bersihkan Kamar Mandi', done: false },
+      { name: 'Rapikan Tempat Tidur', done: false },
+      { name: 'Buang Sampah', done: false }
+    ]);
+
+    const completedChecklistCount = computed(() => {
+      return dummyChecklist.value.filter(t => t.done).length;
+    });
+    
+    const checklistProgress = computed(() => {
+      if (dummyChecklist.value.length === 0) return 0;
+      return (completedChecklistCount.value / dummyChecklist.value.length) * 100;
+    });
+
+    const openRoomDetail = (room) => {
+      selectedRoom.value = room;
+      roomTimer.value = 0;
+      isRoomTimerRunning.value = false;
+      // Reset checklist if pending
+      if (room.status === 'Pending') {
+        dummyChecklist.value.forEach(t => t.done = false);
+      } else {
+        dummyChecklist.value.forEach(t => t.done = true);
+      }
+    };
+
+    const formatTimer = (seconds) => {
+      const h = Math.floor(seconds / 3600).toString().padStart(2, '0');
+      const m = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
+      const s = (seconds % 60).toString().padStart(2, '0');
+      return `${h}:${m}:${s}`;
+    };
+
+    const startRoomTimer = () => {
+      isRoomTimerRunning.value = true;
+      intervalTimer = setInterval(() => {
+        roomTimer.value++;
+      }, 1000);
+    };
+
+    const stopRoomTimer = () => {
+      Swal.fire({
+        title: 'Selesai?',
+        text: "Anda yakin telah menyelesaikan semua checklist kamar ini?",
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#10B981',
+        cancelButtonText: 'Batal',
+        confirmButtonText: 'Ya, Selesai'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          clearInterval(intervalTimer);
+          isRoomTimerRunning.value = false;
+          selectedRoom.value.status = 'Completed';
+          
+          Swal.fire('Berhasil!', 'Data pengerjaan kamar disimpan.', 'success');
+        }
+      });
+    };
+
+    onUnmounted(() => {
+      if (intervalTimer) clearInterval(intervalTimer);
+    });
+
+    // --- Housekeeping Projects Logic ---
+    const dummyHouseKeeping = ref([
+      { id: 1, title: 'Deep Cleaning Lorong A', desc: 'Bersihkan seluruh karpet lorong timur.', period: 'Mingguan', date: '11 Jul 2026', status: 'Pending' },
+      { id: 2, title: 'Disinfektan Area Lobi', desc: 'Semprot seluruh area publik dengan disinfektan.', period: 'Harian', date: '11 Jul 2026', status: 'Selesai' }
+    ]);
+    const finishHouseKeeping = (proj) => {
+      // Simulate file picker & upload
+      Swal.fire({
+        title: 'Unggah Foto Dokumentasi',
+        text: 'Ambil gambar langsung dari kamera atau pilih dari galeri.',
+        icon: 'info',
+        showCancelButton: true,
+        confirmButtonText: 'Kamera / Galeri',
+        cancelButtonText: 'Batal'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          Swal.fire('Terkirim!', 'Foto berhasil diunggah ke Google Drive dan tugas selesai.', 'success');
+          proj.status = 'Selesai';
+        }
+      });
+    };
+
+    // --- Staff Work Projects Logic ---
+    const dummyStaffProjects = ref([
+      { id: 1, title: 'Pengecekan AC Kamar VIP', desc: 'Filter AC sudah kotor, dibersihkan dan dicuci', date: '10 Jul 2026', period: 'Bulanan' }
+    ]);
+    const showAddStaffProject = ref(false);
+    const newStaffProject = ref({ title: '', desc: '' });
+    const submitStaffProject = () => {
+      if (!newStaffProject.value.title) return;
+      dummyStaffProjects.value.unshift({
+        id: Date.now(),
+        title: newStaffProject.value.title,
+        desc: newStaffProject.value.desc,
+        date: currentDate.value,
+        period: 'Harian'
+      });
+      Swal.fire('Berhasil', 'Laporan Proyek telah dikirim', 'success');
+      showAddStaffProject.value = false;
+      newStaffProject.value = { title: '', desc: '' };
+    };
+
+    // --- Misc Forms ---
+    const submitLeave = () => {
+      Swal.fire('Berhasil', 'Pengajuan izin/cuti telah dikirim ke Manager.', 'success');
+    };
+    
+    // Inventory state
+    const inventoryForm = ref({ item: '', qty: 1 });
+    const inventoryHistory = ref([
+      { id: 1, item: 'Sabun Kaca', qty: 2, time: '08:30 WIB' }
+    ]);
+    
+    const submitInventory = () => {
+      if (!inventoryForm.value.item || inventoryForm.value.qty < 1) return;
+      
+      const now = new Date();
+      inventoryHistory.value.unshift({
+        id: Date.now(),
+        item: inventoryForm.value.item,
+        qty: inventoryForm.value.qty,
+        time: now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB'
+      });
+      
+      Swal.fire({
+        icon: 'success',
+        title: 'Dicatat',
+        text: 'Pengambilan barang berhasil ditambahkan ke riwayat.',
+        timer: 1500,
+        showConfirmButton: false
+      });
+      
+      inventoryForm.value = { item: '', qty: 1 };
+    };
+
+    return {
+      currentView,
+      handleLogout,
+      currentUser,
+      dummyShift,
+      attendanceStatus,
+      currentTime,
+      currentDate,
+      canClockIn,
+      toggleAttendance,
+      navigate,
+      // Room
+      dummyRooms,
+      selectedRoom,
+      roomTimer,
+      isRoomTimerRunning,
+      dummyChecklist,
+      completedChecklistCount,
+      checklistProgress,
+      openRoomDetail,
+      formatTimer,
+      startRoomTimer,
+      stopRoomTimer,
+      // Housekeeping
+      dummyHouseKeeping,
+      finishHouseKeeping,
+      // Staff Projects
+      dummyStaffProjects,
+      showAddStaffProject,
+      newStaffProject,
+      submitStaffProject,
+      // Misc
+      submitLeave,
+      inventoryForm,
+      inventoryHistory,
+      submitInventory
+    };
+  }
+}).mount('#app');
+</script>
+
+</body>
+</html>

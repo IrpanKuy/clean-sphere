@@ -86,6 +86,7 @@ Antarmuka komprehensif bagi Manager untuk memantau dan mengonfigurasi operasiona
     *   Konfigurasi kategori inventaris secara dinamis.
 *   **HouseKeeping Project**:
     *   Tabel untuk mengelola proyek yang diberikan kepada staf dari periode harian/mingguan/bulanan dan dengan foto dokumentasi yang dikirim ke google drive (bisa menggunakan file gambar atau foto kamera ponsel).
+    
 *   **project pekerjaan Staff**:
     *   Tabel untuk mengelola proyek yang diberikan kepada staf dari periode mingguan/bulanan, isi judul tugas, deskripsi, lalu unggah foto (bisa menggunakan file gambar atau foto kamera ponsel)
 *   **Manajemen Staff & Shift**:

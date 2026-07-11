@@ -271,6 +271,46 @@ function doPost(e) {
       case "monthlyReset":
         result = handleMonthlyResetAction();
         break;
+      case "updateSettings":
+        result = handleUpdateRecord({
+          sheetName: "tb_settings",
+          keyCol: "setting_id",
+          keyValue: "SET1",
+          updates: {
+            api_key: payload.api_key,
+            folder_url: payload.folder_url
+          }
+        });
+        // If not exist, try to create it
+        if (!result.success) {
+            result = handleCreateRecord({
+              sheetName: "tb_settings",
+              record: {
+                setting_id: "SET1",
+                api_key: payload.api_key,
+                folder_url: payload.folder_url
+              }
+            });
+        }
+        break;
+      case "updateAdminCredentials":
+        result = handleUpdateRecord({
+          sheetName: "tb_users",
+          keyCol: "username", // Wait, user might change username! Let's update by role="manager" maybe? Or assume username is the old username?
+          keyValue: payload.username, // No, the payload only has new username, name, passwordHash. Wait, we should update by role manager if there's only 1 manager.
+          // Let's use role as keyCol? handleUpdateRecord requires unique match. We can just use role manager.
+          keyCol: "role",
+          keyValue: "manager",
+          updates: {
+            username: payload.username,
+            name: payload.name,
+            ...(payload.passwordHash ? { password: payload.passwordHash } : {})
+          }
+        });
+        break;
+      case "generateDailyData":
+        result = handleGenerateDailyDataAction(payload);
+        break;
       default:
         result = { success: false, message: "Action not recognized: " + action };
     }
@@ -319,7 +359,8 @@ function setupDatabase() {
     "tb_checklist_master": ["task_id", "task_name", "task_type", "description", "is_active"],
     "tb_staff_checklist_assignments": ["assignment_id", "user_id", "task_id", "is_enabled"],
     "tb_room_checklist": ["checklist_id", "room_number", "staff_id", "date", "start_time", "end_time", "duration_minutes", "tasks_completed", "linen_changed", "refills", "status", "kpi_score"],
-    "tb_housekeeping_projects": ["project_id", "title", "description", "type", "staff_id", "photo_url", "date", "status", "approved_by", "approved_at"],
+    "tb_housekeeping_project_master": ["master_id", "title", "description", "period_type", "staff_ids", "start_date", "last_generated_date", "is_active"],
+    "tb_housekeeping_projects": ["project_id", "master_id", "title", "description", "type", "staff_ids", "photo_url", "date", "status", "approved_by", "approved_at"],
     "tb_staff_work_projects": ["work_project_id", "title", "description", "period", "staff_id", "photo_url", "date"],
     "tb_inventory": ["item_id", "item_code", "category_id", "item_name", "stock_initial", "stock_in", "stock_out", "stock_current", "min_stock", "remarks"],
     "tb_inventory_transactions": ["transaction_id", "item_id", "user_id", "type", "quantity", "date", "timestamp", "remarks"]
@@ -837,6 +878,7 @@ function handleGetAllDataAction() {
     checklist_master: getSheetData("tb_checklist_master"),
     staff_checklist_assignments: getSheetData("tb_staff_checklist_assignments"),
     room_checklist: getSheetData("tb_room_checklist"),
+    housekeeping_project_master: getSheetData("tb_housekeeping_project_master"),
     housekeeping_projects: getSheetData("tb_housekeeping_projects"),
     staff_work_projects: getSheetData("tb_staff_work_projects"),
     inventory: getSheetData("tb_inventory"),
@@ -1883,3 +1925,151 @@ function reseedDatabase() {
   };
 }
 
+/**
+ * Handle Generation of Daily Data
+ */
+function handleGenerateDailyDataAction(payload) {
+  const managerId = payload.userId;
+  const tz = getSpreadsheet().getSpreadsheetTimeZone();
+  const now = new Date();
+  const todayStr = Utilities.formatDate(now, tz, "yyyy-MM-dd");
+  let stats = { attendance: 0, room_checklists: 0, area_tasks: 0, housekeeping_projects: 0 };
+
+  try {
+    // 1. Generate Attendance
+    const users = getSheetData("tb_users");
+    const activeStaff = users.filter(u => u.status === "active" && u.role === "staff");
+    const attendance = getSheetData("tb_attendance");
+    
+    activeStaff.forEach(staff => {
+      const existing = attendance.find(a => a.user_id === staff.user_id && a.date === todayStr);
+      if (!existing) {
+        appendRowToSheet("tb_attendance", {
+          attendance_id: "ATT" + Utilities.getUuid().substring(0, 8).toUpperCase(),
+          user_id: staff.user_id,
+          shift_id: staff.shift_id,
+          date: todayStr,
+          check_in_time: "",
+          check_out_time: "",
+          status: "pending",
+          late_checkout_minutes: 0
+        });
+        stats.attendance++;
+      }
+    });
+
+    // 2. Generate Room Checklists based on Room Assignments
+    const roomAsgs = getSheetData("tb_room_assignments");
+    const todayAsgs = roomAsgs.filter(a => a.date === todayStr);
+    const existingChecklists = getSheetData("tb_room_checklist").filter(c => c.date === todayStr);
+    
+    todayAsgs.forEach(asg => {
+      const existing = existingChecklists.find(c => String(c.room_number) === String(asg.room_number) && c.staff_id === asg.staff_id);
+      if (!existing) {
+        appendRowToSheet("tb_room_checklist", {
+          checklist_id: "CHK" + Utilities.getUuid().substring(0, 8).toUpperCase(),
+          room_number: asg.room_number,
+          staff_id: asg.staff_id,
+          date: todayStr,
+          start_time: "",
+          end_time: "",
+          duration_minutes: 0,
+          tasks_completed: "{}",
+          linen_changed: "[]",
+          refills: "[]",
+          status: "Pending",
+          kpi_score: 0
+        });
+        stats.room_checklists++;
+      }
+    });
+
+    // 3. Generate Area Tasks Daily
+    const staffAreaTasks = getSheetData("tb_staff_area_tasks");
+    const existingAreaTasks = getSheetData("tb_area_tasks_daily").filter(t => t.date === todayStr);
+    
+    staffAreaTasks.forEach(sat => {
+      const existing = existingAreaTasks.find(t => t.area_id === sat.area_id && t.area_shift_id === sat.area_shift_id && t.staff_id === sat.staff_id);
+      if (!existing) {
+        appendRowToSheet("tb_area_tasks_daily", {
+          task_daily_id: "ATD" + Utilities.getUuid().substring(0, 8).toUpperCase(),
+          area_id: sat.area_id,
+          area_shift_id: sat.area_shift_id,
+          staff_id: sat.staff_id,
+          date: todayStr,
+          status: "Pending",
+          remarks: "",
+          updated_by: "",
+          updated_at: ""
+        });
+        stats.area_tasks++;
+      }
+    });
+
+    // 4. Generate Housekeeping Projects
+    const masterProjects = getSheetData("tb_housekeeping_project_master");
+    const activeMasters = masterProjects.filter(p => String(p.is_active) !== "false");
+    const existingProjects = getSheetData("tb_housekeeping_projects");
+    
+    activeMasters.forEach(master => {
+      let shouldGenerate = false;
+      const startDate = new Date(master.start_date);
+      // Ensure the start date has passed
+      if (now < new Date(startDate.getTime() - 86400000)) return; 
+      
+      const lastGenDateStr = master.last_generated_date;
+      
+      if (!lastGenDateStr) {
+        shouldGenerate = true;
+      } else {
+        const lastGen = new Date(lastGenDateStr);
+        const daysDiff = Math.floor((now - lastGen) / (1000 * 60 * 60 * 24));
+        
+        if (master.period_type === "Daily" && daysDiff >= 1) {
+          shouldGenerate = true;
+        } else if (master.period_type === "Weekly" && daysDiff >= 7) {
+          shouldGenerate = true;
+        } else if (master.period_type === "Monthly") {
+          const nextMonth = new Date(lastGen);
+          nextMonth.setMonth(nextMonth.getMonth() + 1);
+          if (now >= nextMonth) {
+            shouldGenerate = true;
+          }
+        }
+      }
+      
+      if (shouldGenerate) {
+        // Prevent duplicate for today
+        const isDuplicate = existingProjects.some(p => p.master_id === master.master_id && p.date === todayStr);
+        if (!isDuplicate) {
+          appendRowToSheet("tb_housekeeping_projects", {
+            project_id: "PRJ" + Utilities.getUuid().substring(0, 8).toUpperCase(),
+            master_id: master.master_id,
+            title: master.title,
+            description: master.description,
+            type: master.period_type,
+            staff_ids: master.staff_ids, // Multi-staff assignment
+            photo_url: "",
+            date: todayStr,
+            status: "Pending",
+            approved_by: "",
+            approved_at: ""
+          });
+          
+          updateRowInSheet("tb_housekeeping_project_master", "master_id", master.master_id, {
+            last_generated_date: todayStr
+          });
+          stats.housekeeping_projects++;
+        }
+      }
+    });
+
+    return { 
+      success: true, 
+      message: "Data harian berhasil di-generate. (Absensi: " + stats.attendance + ", Ceklis: " + stats.room_checklists + ", Area: " + stats.area_tasks + ", Proyek: " + stats.housekeeping_projects + ")" 
+    };
+
+  } catch (err) {
+    return { success: false, message: "Gagal generate data harian: " + err.toString() };
+  }
+}

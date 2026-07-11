@@ -45,7 +45,8 @@ const StaffManagementView = {
   },
   computed: {
     filteredUsers() {
-      let list = this.users ? [...this.users] : [];
+      // Exclude managers/admins from staff menu as requested
+      let list = this.users ? this.users.filter(u => u.role !== 'manager' && u.role !== 'admin') : [];
       if (this.searchQuery) {
         const q = this.searchQuery.toLowerCase();
         list = list.filter(u => 
@@ -227,57 +228,60 @@ const StaffManagementView = {
     }
   },
   template: `
-    <div class="staff-view-wrapper">
+    <div class="flex flex-col gap-6 w-full max-w-[1200px] mx-auto">
       
       <!-- SUB-TAB 1: DATA KARYAWAN & AKUN -->
-      <div v-if="subTab === 'staff-accounts'">
-        <div class="grid-controls-row">
-          <div class="search-box-wrapper">
-            <span class="search-glass">
-              <svg style="width: 16px; height: 16px; color: var(--text-muted);" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+      <div v-if="subTab === 'staff-accounts'" class="flex flex-col gap-4">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div class="relative w-full sm:w-[320px]">
+            <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.637 10.637z" />
               </svg>
             </span>
-            <input type="text" v-model="searchQuery" placeholder="Cari nama, username..." class="ctrl-search-input">
+            <input type="text" v-model="searchQuery" placeholder="Cari nama, username..." class="w-full h-[42px] pl-10 pr-4 bg-white border border-slate-200 rounded-xl text-[13.5px] font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm">
           </div>
-          <button @click="openAddUser" class="btn-primary-action">
+          <button @click="openAddUser" class="w-full sm:w-auto h-[42px] px-5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-[13px] rounded-xl shadow-[0_4px_10px_rgba(37,99,235,0.2)] transition-all flex items-center justify-center shrink-0">
             + Tambah Karyawan
           </button>
         </div>
 
-        <div class="table-card">
-          <div class="table-responsive">
-            <table>
+        <div class="bg-white rounded-2xl shadow-[0_10px_25px_-5px_rgba(15,23,42,0.04)] border border-slate-100 flex flex-col w-full overflow-hidden">
+          <div class="overflow-x-auto w-full custom-scrollbar">
+            <table class="w-full min-w-[800px] border-collapse text-left">
             <thead>
               <tr>
-                <th>Nama Lengkap</th>
-                <th>Username</th>
-                <th>Role</th>
-                <th>Shift Default</th>
-                <th style="text-align: center;">Status</th>
-                <th style="width: 100px; text-align: center;">Aksi</th>
+                <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap first:rounded-tl-lg">Nama Lengkap</th>
+                <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Username</th>
+                <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Role</th>
+                <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Shift Default</th>
+                <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap text-center">Status</th>
+                <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap text-center last:rounded-tr-lg w-[100px]">Aksi</th>
               </tr>
             </thead>
-            <tbody>
-              <tr v-for="u in filteredUsers" :key="u.user_id">
-                <td><strong>{{ u.name }}</strong></td>
-                <td>{{ u.username }}</td>
-                <td>
-                  <span :class="['badge-status', u.role === 'manager' ? 'status-process' : 'status-vc']" style="padding: 2px 8px; font-weight:bold; font-size:11px;">
+            <tbody class="divide-y divide-slate-100">
+              <tr v-for="u in filteredUsers" :key="u.user_id" class="transition-colors hover:bg-slate-50/50">
+                <td class="py-3.5 px-4 align-middle"><strong class="text-[13.5px] font-bold text-slate-900">{{ u.name }}</strong></td>
+                <td class="py-3.5 px-4 align-middle">{{ u.username }}</td>
+                <td class="py-3.5 px-4 align-middle">
+                  <span :class="['inline-flex items-center justify-center px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider border', u.role === 'manager' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200']">
                     {{ u.role.toUpperCase() }}
                   </span>
                 </td>
-                <td>{{ getShiftName(u.shift_id) }}</td>
-                <td style="text-align: center;">
-                  <span :class="['badge-status', u.status === 'active' ? 'status-vc' : 'status-ooo']">
+                <td class="py-3.5 px-4 align-middle">{{ getShiftName(u.shift_id) }}</td>
+                <td class="py-3.5 px-4 align-middle text-center">
+                  <span :class="['inline-flex items-center justify-center px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider border', u.status === 'active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200']">
                     {{ u.status === 'active' ? 'Aktif' : 'Nonaktif' }}
                   </span>
                 </td>
-                <td style="text-align: center;">
-                  <button @click="openEditUser(u)" class="btn-card-edit" style="width: auto; padding: 5px 12px; margin:0;">
+                <td class="py-3.5 px-4 align-middle text-center">
+                  <button @click="openEditUser(u)" class="h-[32px] px-4 bg-white border border-slate-200 text-slate-600 font-bold text-[12px] rounded-lg hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200 transition-colors inline-flex items-center justify-center shadow-sm">
                     Edit
                   </button>
                 </td>
+              </tr>
+              <tr v-if="filteredUsers.length === 0">
+                <td colspan="6" class="py-12 px-4 text-center text-slate-400 text-sm font-medium bg-slate-50/30">Tidak ada data karyawan tercatat.</td>
               </tr>
             </tbody>
           </table>
@@ -286,70 +290,70 @@ const StaffManagementView = {
       </div>
 
       <!-- SUB-TAB 2: PERSETUJUAN IZIN & CUTI -->
-      <div v-if="subTab === 'leave-approvals'">
-        <div class="grid-controls-row">
-          <div class="search-box-wrapper">
-            <span class="search-glass">
-              <svg style="width: 16px; height: 16px; color: var(--text-muted);" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+      <div v-if="subTab === 'leave-approvals'" class="flex flex-col gap-4">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div class="relative w-full sm:w-[320px]">
+            <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.637 10.637z" />
               </svg>
             </span>
-            <input type="text" v-model="searchQuery" placeholder="Cari nama, jenis izin, alasan..." class="ctrl-search-input">
+            <input type="text" v-model="searchQuery" placeholder="Cari nama, jenis izin, alasan..." class="w-full h-[42px] pl-10 pr-4 bg-white border border-slate-200 rounded-xl text-[13.5px] font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm">
           </div>
           <div>&nbsp;</div>
         </div>
 
-        <div class="table-card">
-          <div class="table-responsive">
-            <table>
+        <div class="bg-white rounded-2xl shadow-[0_10px_25px_-5px_rgba(15,23,42,0.04)] border border-slate-100 flex flex-col w-full overflow-hidden">
+          <div class="overflow-x-auto w-full custom-scrollbar">
+            <table class="w-full min-w-[1000px] border-collapse text-left">
             <thead>
               <tr>
-                <th>Petugas</th>
-                <th>Jenis Izin</th>
-                <th>Tanggal Mulai</th>
-                <th>Tanggal Selesai</th>
-                <th>Alasan</th>
-                <th style="text-align: center;">Bukti Gambar</th>
-                <th style="text-align: center;">Status</th>
-                <th style="width: 180px; text-align: center;">Tindakan</th>
+                <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap first:rounded-tl-lg">Petugas</th>
+                <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Jenis Izin</th>
+                <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Tanggal Mulai</th>
+                <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Tanggal Selesai</th>
+                <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Alasan</th>
+                <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap text-center">Bukti Gambar</th>
+                <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap text-center">Status</th>
+                <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap text-center last:rounded-tr-lg w-[180px]">Tindakan</th>
               </tr>
             </thead>
-            <tbody>
-              <tr v-for="l in filteredLeave" :key="l.request_id">
-                <td><strong>{{ getUserById(l.user_id)?.name || l.user_id }}</strong></td>
-                <td>
-                  <span class="badge-status status-process" style="padding: 2px 8px; font-weight:bold; font-size:11.5px;">
+            <tbody class="divide-y divide-slate-100">
+              <tr v-for="l in filteredLeave" :key="l.request_id" class="transition-colors hover:bg-slate-50/50">
+                <td class="py-3.5 px-4 align-middle"><strong class="text-[13.5px] font-bold text-slate-900">{{ getUserById(l.user_id)?.name || l.user_id }}</strong></td>
+                <td class="py-3.5 px-4 align-middle">
+                  <span class="inline-flex items-center justify-center px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider border bg-amber-50 text-amber-700 border-amber-200">
                     {{ l.leave_type.toUpperCase() }}
                   </span>
                 </td>
-                <td>{{ formatDateStr(l.start_date) }}</td>
-                <td>{{ formatDateStr(l.end_date) }}</td>
-                <td><span class="text-muted" style="font-size:12.5px;">{{ l.reason }}</span></td>
-                <td style="text-align: center;">
-                  <a v-if="l.attachment_url" :href="l.attachment_url" target="_blank" class="btn-eye-icon" style="padding:4px 8px; font-size:12px; text-decoration:none; display:inline-flex; align-items:center; gap:3px;">
+                <td class="py-3.5 px-4 align-middle">{{ formatDateStr(l.start_date) }}</td>
+                <td class="py-3.5 px-4 align-middle">{{ formatDateStr(l.end_date) }}</td>
+                <td class="py-3.5 px-4 align-middle"><span class="text-slate-500 text-[12.5px] font-medium">{{ l.reason }}</span></td>
+                <td class="py-3.5 px-4 align-middle text-center">
+                  <a v-if="l.attachment_url" :href="l.attachment_url" target="_blank" class="h-[28px] px-3 bg-white border border-slate-200 text-slate-600 font-bold text-[12px] rounded-lg hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200 transition-colors inline-flex items-center justify-center shadow-sm gap-1.5 no-underline">
                     🖼️ Lihat Bukti
                   </a>
-                  <span v-else class="text-muted" style="font-size:12px;">Tidak Ada</span>
+                  <span v-else class="text-slate-400 text-[12px] font-medium">Tidak Ada</span>
                 </td>
-                <td style="text-align: center;">
-                  <span :class="['badge-status', l.status === 'approved' ? 'status-vc' : l.status === 'rejected' ? 'status-vd' : 'status-process']" style="padding: 4px 8px; font-weight:bold;">
+                <td class="py-3.5 px-4 align-middle text-center">
+                  <span :class="['inline-flex items-center justify-center px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider border', l.status === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : l.status === 'rejected' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-amber-50 text-amber-700 border-amber-200']">
                     {{ l.status === 'approved' ? 'DISETUJUI' : l.status === 'rejected' ? 'DITOLAK' : 'PENDING' }}
                   </span>
                 </td>
-                <td>
-                  <div v-if="l.status === 'pending'" style="display:flex; gap:6px; justify-content:center;">
-                    <button @click="handleLeaveDecision(l.request_id, 'approved')" class="btn-card-edit" style="width:auto; padding:5px 10px; background-color:#ECFDF5; border-color:rgba(16,185,129,0.3); color:#10B981; margin:0;">
+                <td class="py-3.5 px-4 align-middle text-center">
+                  <div v-if="l.status === 'pending'" class="flex gap-1.5 justify-center">
+                    <button @click="handleLeaveDecision(l.request_id, 'approved')" class="h-[32px] px-3 bg-emerald-50 border border-emerald-200 text-emerald-600 font-bold text-[12px] rounded-lg hover:bg-emerald-100 transition-colors inline-flex items-center justify-center shadow-sm">
                       Setujui
                     </button>
-                    <button @click="handleLeaveDecision(l.request_id, 'rejected')" class="btn-card-edit" style="width:auto; padding:5px 10px; background-color:#FEF2F2; border-color:rgba(239,68,68,0.2); color:#EF4444; margin:0;">
+                    <button @click="handleLeaveDecision(l.request_id, 'rejected')" class="h-[32px] px-3 bg-red-50 border border-red-200 text-red-600 font-bold text-[12px] rounded-lg hover:bg-red-100 transition-colors inline-flex items-center justify-center shadow-sm">
                       Tolak
                     </button>
                   </div>
-                  <span v-else class="text-muted" style="font-size:12px;">Diproses oleh Admin</span>
+                  <span v-else class="text-slate-400 text-[12px] font-medium">Diproses oleh Admin</span>
                 </td>
               </tr>
               <tr v-if="filteredLeave.length === 0">
-                <td colspan="8" class="text-center-placeholder">Tidak ada pengajuan izin staf tercatat.</td>
+                <td colspan="8" class="py-12 px-4 text-center text-slate-400 text-sm font-medium bg-slate-50/30">Tidak ada pengajuan izin staf tercatat.</td>
               </tr>
             </tbody>
           </table>
@@ -358,49 +362,49 @@ const StaffManagementView = {
       </div>
 
       <!-- SUB-TAB 3: SHIFT KERJA -->
-      <div v-if="subTab === 'shift-config'">
-        <div class="grid-controls-row">
-          <div class="search-box-wrapper">
-            <span class="search-glass">
-              <svg style="width: 16px; height: 16px; color: var(--text-muted);" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+      <div v-if="subTab === 'shift-config'" class="flex flex-col gap-4">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div class="relative w-full sm:w-[320px]">
+            <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.637 10.637z" />
               </svg>
             </span>
-            <input type="text" v-model="searchQuery" placeholder="Cari shift..." class="ctrl-search-input">
+            <input type="text" v-model="searchQuery" placeholder="Cari shift..." class="w-full h-[42px] pl-10 pr-4 bg-white border border-slate-200 rounded-xl text-[13.5px] font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm">
           </div>
-          <button @click="openAddShift" class="btn-primary-action">
+          <button @click="openAddShift" class="w-full sm:w-auto h-[42px] px-5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-[13px] rounded-xl shadow-[0_4px_10px_rgba(37,99,235,0.2)] transition-all flex items-center justify-center shrink-0">
             + Tambah Shift
           </button>
         </div>
 
-        <div class="table-card" style="max-width: 900px; margin: 0 auto;">
-          <div class="table-responsive">
-            <table>
+        <div class="bg-white rounded-2xl shadow-[0_10px_25px_-5px_rgba(15,23,42,0.04)] border border-slate-100 flex flex-col w-full max-w-[900px] mx-auto overflow-hidden">
+          <div class="overflow-x-auto w-full custom-scrollbar">
+            <table class="w-full min-w-[700px] border-collapse text-left">
             <thead>
               <tr>
-                <th>Nama Shift</th>
-                <th style="text-align: center;">Jam Masuk</th>
-                <th style="text-align: center;">Jam Pulang</th>
-                <th style="text-align: center;">Toleransi Check-In (min)</th>
-                <th style="text-align: center;">Toleransi Check-Out (min)</th>
-                <th style="text-align: center;">Status</th>
-                <th style="width: 100px; text-align: center;">Aksi</th>
+                <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap first:rounded-tl-lg">Nama Shift</th>
+                <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap text-center">Jam Masuk</th>
+                <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap text-center">Jam Pulang</th>
+                <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap text-center">Toleransi Check-In (min)</th>
+                <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap text-center">Toleransi Check-Out (min)</th>
+                <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap text-center">Status</th>
+                <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap text-center last:rounded-tr-lg w-[100px]">Aksi</th>
               </tr>
             </thead>
-            <tbody>
-              <tr v-for="s in filteredShifts" :key="s.shift_id">
-                <td><strong>{{ s.shift_name }}</strong></td>
-                <td style="text-align: center; font-weight:500;">{{ s.check_in_time }}</td>
-                <td style="text-align: center; font-weight:500;">{{ s.check_out_time }}</td>
-                <td style="text-align: center;">{{ s.pre_check_in_minutes }} menit</td>
-                <td style="text-align: center;">{{ s.pre_check_out_minutes }} menit</td>
-                <td style="text-align: center;">
-                  <span :class="['badge-status', s.is_active ? 'status-vc' : 'status-ooo']">
+            <tbody class="divide-y divide-slate-100">
+              <tr v-for="s in filteredShifts" :key="s.shift_id" class="transition-colors hover:bg-slate-50/50">
+                <td class="py-3.5 px-4 align-middle"><strong class="text-[13.5px] font-bold text-slate-900">{{ s.shift_name }}</strong></td>
+                <td class="py-3.5 px-4 align-middle text-center font-bold text-slate-700">{{ s.check_in_time }}</td>
+                <td class="py-3.5 px-4 align-middle text-center font-bold text-slate-700">{{ s.check_out_time }}</td>
+                <td class="py-3.5 px-4 align-middle text-center font-medium">{{ s.pre_check_in_minutes }} menit</td>
+                <td class="py-3.5 px-4 align-middle text-center font-medium">{{ s.pre_check_out_minutes }} menit</td>
+                <td class="py-3.5 px-4 align-middle text-center">
+                  <span :class="['inline-flex items-center justify-center px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider border', s.is_active ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200']">
                     {{ s.is_active ? 'Aktif' : 'Nonaktif' }}
                   </span>
                 </td>
-                <td style="text-align: center;">
-                  <button @click="openEditShift(s)" class="btn-card-edit" style="width: auto; padding: 5px 12px; margin:0;">
+                <td class="py-3.5 px-4 align-middle text-center">
+                  <button @click="openEditShift(s)" class="h-[32px] px-4 bg-white border border-slate-200 text-slate-600 font-bold text-[12px] rounded-lg hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200 transition-colors inline-flex items-center justify-center shadow-sm">
                     Edit
                   </button>
                 </td>
@@ -412,65 +416,65 @@ const StaffManagementView = {
       </div>
 
       <!-- SUB-TAB 4: LAPORAN ABSENSI & KPI -->
-      <div v-if="subTab === 'attendance-kpi-report'">
-        <div class="grid-controls-row">
-          <div class="search-box-wrapper">
-            <span class="search-glass">
-              <svg style="width: 16px; height: 16px; color: var(--text-muted);" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+      <div v-if="subTab === 'attendance-kpi-report'" class="flex flex-col gap-4">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div class="relative w-full sm:w-[320px]">
+            <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.637 10.637z" />
               </svg>
             </span>
-            <input type="text" v-model="searchQuery" placeholder="Cari nama karyawan..." class="ctrl-search-input">
+            <input type="text" v-model="searchQuery" placeholder="Cari nama karyawan..." class="w-full h-[42px] pl-10 pr-4 bg-white border border-slate-200 rounded-xl text-[13.5px] font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm">
           </div>
           
-          <div class="filter-actions-group" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-            <select v-model="attPeriodFilter" class="ctrl-select">
+          <div class="flex flex-wrap gap-2 items-center w-full md:w-auto">
+            <select v-model="attPeriodFilter" class="w-full sm:w-auto h-[42px] px-3.5 bg-white border border-slate-200 rounded-xl text-[13.5px] font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm">
               <option value="all">Semua Waktu</option>
               <option value="day">Hari Ini</option>
               <option value="week">Minggu Ini</option>
               <option value="month">Bulan Ini</option>
             </select>
             
-            <input type="date" v-model="attDateFilter" class="ctrl-select" title="Pilih tanggal spesifik">
-            <input type="month" v-model="attMonthFilter" class="ctrl-select" title="Pilih bulan spesifik">
+            <input type="date" v-model="attDateFilter" class="w-full sm:w-auto h-[42px] px-3.5 bg-white border border-slate-200 rounded-xl text-[13.5px] font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm" title="Pilih tanggal spesifik">
+            <input type="month" v-model="attMonthFilter" class="w-full sm:w-auto h-[42px] px-3.5 bg-white border border-slate-200 rounded-xl text-[13.5px] font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm" title="Pilih bulan spesifik">
           </div>
         </div>
 
-        <div class="table-card">
-          <div class="table-responsive">
-            <table>
+        <div class="bg-white rounded-2xl shadow-[0_10px_25px_-5px_rgba(15,23,42,0.04)] border border-slate-100 flex flex-col w-full overflow-hidden">
+          <div class="overflow-x-auto w-full custom-scrollbar">
+            <table class="w-full min-w-[900px] border-collapse text-left">
             <thead>
               <tr>
-                <th>Tanggal</th>
-                <th>Karyawan</th>
-                <th>Shift</th>
-                <th style="text-align: center;">Absen Masuk</th>
-                <th style="text-align: center;">Absen Pulang</th>
-                <th style="text-align: center;">Status Absensi</th>
-                <th style="text-align: center;">Rata-rata KPI Hari Ini</th>
+                <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap first:rounded-tl-lg">Tanggal</th>
+                <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Karyawan</th>
+                <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Shift</th>
+                <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap text-center">Absen Masuk</th>
+                <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap text-center">Absen Pulang</th>
+                <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap text-center">Status Absensi</th>
+                <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap text-center last:rounded-tr-lg">Rata-rata KPI Hari Ini</th>
               </tr>
             </thead>
-            <tbody>
-              <tr v-for="a in filteredAttendance" :key="a.attendance_id">
-                <td><span class="font-compact">{{ formatDateStr(a.date) }}</span></td>
-                <td><strong>{{ getUserById(a.user_id)?.name || a.user_id }}</strong></td>
-                <td>{{ getShiftName(a.shift_id) }}</td>
-                <td style="text-align: center; font-weight:500; color: #1E3A8A;">{{ a.check_in_time || '-' }}</td>
-                <td style="text-align: center; font-weight:500; color: #1E3A8A;">{{ a.check_out_time || '-' }}</td>
-                <td style="text-align: center;">
-                  <span :class="['badge-status', a.status === 'Ontime' ? 'status-vc' : a.status === 'Late' ? 'status-process' : 'status-vd']" style="padding: 3px 8px; font-weight:bold; font-size:11.5px;">
+            <tbody class="divide-y divide-slate-100">
+              <tr v-for="a in filteredAttendance" :key="a.attendance_id" class="transition-colors hover:bg-slate-50/50">
+                <td class="py-3.5 px-4 align-middle"><span class="tracking-tight text-[13.5px] font-semibold text-slate-700">{{ formatDateStr(a.date) }}</span></td>
+                <td class="py-3.5 px-4 align-middle"><strong class="text-[13.5px] font-bold text-slate-900">{{ getUserById(a.user_id)?.name || a.user_id }}</strong></td>
+                <td class="py-3.5 px-4 align-middle text-[13.5px] font-medium text-slate-700">{{ getShiftName(a.shift_id) }}</td>
+                <td class="py-3.5 px-4 align-middle text-center font-bold text-blue-900">{{ a.check_in_time || '-' }}</td>
+                <td class="py-3.5 px-4 align-middle text-center font-bold text-blue-900">{{ a.check_out_time || '-' }}</td>
+                <td class="py-3.5 px-4 align-middle text-center">
+                  <span :class="['inline-flex items-center justify-center px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider border', a.status === 'Ontime' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : a.status === 'Late' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-red-50 text-red-700 border-red-200']">
                     {{ a.status === 'Ontime' ? 'Tepat Waktu' : a.status === 'Late' ? 'Terlambat' : a.status.toUpperCase() }}
                   </span>
                 </td>
-                <td style="text-align: center;">
-                  <span class="badge-status status-process" style="padding: 2px 8px; font-weight:bold; font-size:11.5px;" v-if="getStaffKpiScore(a.user_id, a.date) !== '-'">
+                <td class="py-3.5 px-4 align-middle text-center">
+                  <span class="inline-flex items-center justify-center px-2.5 py-1 rounded-md text-[12px] font-bold tracking-wider border bg-amber-50 text-amber-700 border-amber-200" v-if="getStaffKpiScore(a.user_id, a.date) !== '-'">
                     {{ getStaffKpiScore(a.user_id, a.date) }} / 100
                   </span>
-                  <span v-else class="text-muted">-</span>
+                  <span v-else class="text-slate-400 font-medium">-</span>
                 </td>
               </tr>
               <tr v-if="filteredAttendance.length === 0">
-                <td colspan="7" class="text-center-placeholder">Tidak ada data absensi tercatat pada filter aktif.</td>
+                <td colspan="7" class="py-12 px-4 text-center text-slate-400 text-sm font-medium bg-slate-50/30">Tidak ada data absensi tercatat pada filter aktif.</td>
               </tr>
             </tbody>
           </table>
@@ -479,97 +483,109 @@ const StaffManagementView = {
       </div>
 
       <!-- MODAL: ADD / EDIT KARYAWAN -->
-      <div class="modal-overlay-v2" v-if="showUserModal">
-        <div class="modal-box-v2" style="max-width: 460px;">
-          <div class="modal-header-v2">
-            <h3>{{ isEditingUser ? 'Edit Data Karyawan' : 'Tambah Karyawan Baru' }}</h3>
-            <button class="btn-close-modal" @click="showUserModal = false">×</button>
+      <div class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto" v-if="showUserModal">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-[460px] flex flex-col relative">
+          <div class="flex items-center justify-between px-6 py-5 border-b border-slate-100">
+            <h3 class="text-lg font-extrabold text-slate-900">{{ isEditingUser ? 'Edit Data Karyawan' : 'Tambah Karyawan Baru' }}</h3>
+            <button class="w-8 h-8 rounded-full flex items-center justify-center bg-slate-100 hover:bg-slate-200 transition-colors text-slate-500" @click="showUserModal = false">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
-          <form @submit.prevent="submitUserForm" class="modal-body-v2">
-            <div class="form-group-v2">
-              <label>Nama Lengkap</label>
-              <input type="text" v-model="editingUser.name" placeholder="Contoh: Budi Santoso" required class="form-input-v2">
+          <form @submit.prevent="submitUserForm" class="flex flex-col gap-5 p-6 max-h-[75vh] overflow-y-auto custom-scrollbar">
+            <div class="flex flex-col gap-2">
+              <label class="text-[13px] font-bold text-slate-700">Nama Lengkap</label>
+              <input type="text" v-model="editingUser.name" placeholder="Contoh: Budi Santoso" required class="w-full h-[42px] px-3.5 bg-white border border-slate-200 rounded-xl text-[13.5px] font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm">
             </div>
-            <div class="form-group-v2">
-              <label>Username</label>
-              <input type="text" v-model="editingUser.username" placeholder="Contoh: budi" required class="form-input-v2">
+            <div class="flex flex-col gap-2">
+              <label class="text-[13px] font-bold text-slate-700">Username</label>
+              <input type="text" v-model="editingUser.username" placeholder="Contoh: budi" required class="w-full h-[42px] px-3.5 bg-white border border-slate-200 rounded-xl text-[13.5px] font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm">
             </div>
-            <div class="form-group-v2">
-              <label>Password {{ isEditingUser ? '(Biarkan kosong jika tidak ingin diubah)' : '' }}</label>
-              <input type="password" v-model="editingUser.password" placeholder="Ketik password..." :required="!isEditingUser" class="form-input-v2">
+            <div class="flex flex-col gap-2">
+              <label class="text-[13px] font-bold text-slate-700">Password {{ isEditingUser ? '(Biarkan kosong jika tidak ingin diubah)' : '' }}</label>
+              <input type="password" v-model="editingUser.password" placeholder="Ketik password..." :required="!isEditingUser" class="w-full h-[42px] px-3.5 bg-white border border-slate-200 rounded-xl text-[13.5px] font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm">
             </div>
-            <div class="form-group-v2">
-              <label>Jabatan / Role</label>
-              <select v-model="editingUser.role" required class="form-input-v2">
+            <div class="flex flex-col gap-2">
+              <label class="text-[13px] font-bold text-slate-700">Jabatan / Role</label>
+              <select v-model="editingUser.role" required class="w-full h-[42px] px-3.5 bg-white border border-slate-200 rounded-xl text-[13.5px] font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm">
                 <option value="staff">Staff Housekeeping</option>
                 <option value="manager">Manager / Admin</option>
               </select>
             </div>
-            <div class="form-group-v2">
-              <label>Shift Kerja Default</label>
-              <select v-model="editingUser.shift_id" required class="form-input-v2">
+            <div class="flex flex-col gap-2">
+              <label class="text-[13px] font-bold text-slate-700">Shift Kerja Default</label>
+              <select v-model="editingUser.shift_id" required class="w-full h-[42px] px-3.5 bg-white border border-slate-200 rounded-xl text-[13.5px] font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm">
                 <option v-for="s in shifts" :key="s.shift_id" :value="s.shift_id">
                   {{ s.shift_name }} ({{ s.check_in_time }} - {{ s.check_out_time }})
                 </option>
               </select>
             </div>
-            <div class="form-group-v2" v-if="isEditingUser">
-              <label>Status Akun</label>
-              <select v-model="editingUser.status" class="form-input-v2">
+            <div class="flex flex-col gap-2" v-if="isEditingUser">
+              <label class="text-[13px] font-bold text-slate-700">Status Akun</label>
+              <select v-model="editingUser.status" class="w-full h-[42px] px-3.5 bg-white border border-slate-200 rounded-xl text-[13.5px] font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm">
                 <option value="active">Aktif</option>
                 <option value="inactive">Nonaktif</option>
               </select>
             </div>
-            <div class="modal-footer-v2">
-              <button type="button" class="btn-sec-modal" @click="showUserModal = false">Batal</button>
-              <button type="submit" class="btn-primary-action">Simpan</button>
+            <div class="flex items-center justify-end gap-3 pt-4 mt-2 border-t border-slate-100">
+              <button type="button" class="h-[42px] px-5 bg-white border border-slate-200 text-slate-600 font-bold text-[13px] rounded-xl hover:bg-slate-50 transition-colors" @click="showUserModal = false">Batal</button>
+              <button type="submit" class="h-[42px] px-6 bg-blue-600 hover:bg-blue-700 text-white font-bold text-[13px] rounded-xl shadow-[0_4px_10px_rgba(37,99,235,0.2)] transition-all">Simpan</button>
             </div>
           </form>
         </div>
       </div>
 
       <!-- MODAL: ADD / EDIT SHIFT CONFIG -->
-      <div class="modal-overlay-v2" v-if="showShiftModal">
-        <div class="modal-box-v2" style="max-width: 460px;">
-          <div class="modal-header-v2">
-            <h3>{{ isEditingShift ? 'Edit Konfigurasi Shift' : 'Tambah Shift Baru' }}</h3>
-            <button class="btn-close-modal" @click="showShiftModal = false">×</button>
+      <div class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto" v-if="showShiftModal">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-[460px] flex flex-col relative">
+          <div class="flex items-center justify-between px-6 py-5 border-b border-slate-100">
+            <h3 class="text-lg font-extrabold text-slate-900">{{ isEditingShift ? 'Edit Konfigurasi Shift' : 'Tambah Shift Baru' }}</h3>
+            <button class="w-8 h-8 rounded-full flex items-center justify-center bg-slate-100 hover:bg-slate-200 transition-colors text-slate-500" @click="showShiftModal = false">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
-          <form @submit.prevent="submitShiftForm" class="modal-body-v2">
-            <div class="form-group-v2">
-              <label>ID Shift (Unique)</label>
-              <input type="text" v-model="editingShift.shift_id" placeholder="Contoh: S1, S2, S3" :disabled="isEditingShift" required class="form-input-v2">
+          <form @submit.prevent="submitShiftForm" class="flex flex-col gap-5 p-6 max-h-[75vh] overflow-y-auto custom-scrollbar">
+            <div class="flex flex-col gap-2">
+              <label class="text-[13px] font-bold text-slate-700">ID Shift (Unique)</label>
+              <input type="text" v-model="editingShift.shift_id" placeholder="Contoh: S1, S2, S3" :disabled="isEditingShift" required class="w-full h-[42px] px-3.5 bg-white border border-slate-200 rounded-xl text-[13.5px] font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm">
             </div>
-            <div class="form-group-v2">
-              <label>Nama Shift</label>
-              <input type="text" v-model="editingShift.shift_name" placeholder="Contoh: Pagi, Siang, Malam" required class="form-input-v2">
+            <div class="flex flex-col gap-2">
+              <label class="text-[13px] font-bold text-slate-700">Nama Shift</label>
+              <input type="text" v-model="editingShift.shift_name" placeholder="Contoh: Pagi, Siang, Malam" required class="w-full h-[42px] px-3.5 bg-white border border-slate-200 rounded-xl text-[13.5px] font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm">
             </div>
-            <div class="form-group-v2">
-              <label>Jam Masuk (HH:mm)</label>
-              <input type="text" v-model="editingShift.check_in_time" placeholder="Contoh: 07:00" required class="form-input-v2">
+            <div class="grid grid-cols-2 gap-4">
+              <div class="flex flex-col gap-2">
+                <label class="text-[13px] font-bold text-slate-700">Jam Masuk</label>
+                <input type="time" v-model="editingShift.check_in_time" required class="w-full h-[42px] px-3.5 bg-white border border-slate-200 rounded-xl text-[13.5px] font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm">
+              </div>
+              <div class="flex flex-col gap-2">
+                <label class="text-[13px] font-bold text-slate-700">Jam Pulang</label>
+                <input type="time" v-model="editingShift.check_out_time" required class="w-full h-[42px] px-3.5 bg-white border border-slate-200 rounded-xl text-[13.5px] font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm">
+              </div>
             </div>
-            <div class="form-group-v2">
-              <label>Jam Pulang (HH:mm)</label>
-              <input type="text" v-model="editingShift.check_out_time" placeholder="Contoh: 15:00" required class="form-input-v2">
+            <div class="grid grid-cols-2 gap-4">
+              <div class="flex flex-col gap-2">
+                <label class="text-[13px] font-bold text-slate-700" title="Toleransi Check-In Sebelum Jam Shift (menit)">Toleransi In (min)</label>
+                <input type="number" v-model.number="editingShift.pre_check_in_minutes" min="0" required class="w-full h-[42px] px-3.5 bg-white border border-slate-200 rounded-xl text-[13.5px] font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm">
+              </div>
+              <div class="flex flex-col gap-2">
+                <label class="text-[13px] font-bold text-slate-700" title="Toleransi Check-Out Setelah Jam Shift (menit)">Toleransi Out (min)</label>
+                <input type="number" v-model.number="editingShift.pre_check_out_minutes" min="0" required class="w-full h-[42px] px-3.5 bg-white border border-slate-200 rounded-xl text-[13.5px] font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm">
+              </div>
             </div>
-            <div class="form-group-v2">
-              <label>Toleransi Check-In Sebelum Jam Shift (menit)</label>
-              <input type="number" v-model.number="editingShift.pre_check_in_minutes" min="0" required class="form-input-v2">
-            </div>
-            <div class="form-group-v2">
-              <label>Toleransi Check-Out Setelah Jam Shift (menit)</label>
-              <input type="number" v-model.number="editingShift.pre_check_out_minutes" min="0" required class="form-input-v2">
-            </div>
-            <div class="form-group-v2" v-if="isEditingShift">
-              <label>Status Shift</label>
-              <select v-model="editingShift.is_active" class="form-input-v2">
+            <div class="flex flex-col gap-2" v-if="isEditingShift">
+              <label class="text-[13px] font-bold text-slate-700">Status Shift</label>
+              <select v-model="editingShift.is_active" class="w-full h-[42px] px-3.5 bg-white border border-slate-200 rounded-xl text-[13.5px] font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm">
                 <option :value="true">Aktif</option>
                 <option :value="false">Nonaktif</option>
               </select>
             </div>
-            <div class="modal-footer-v2">
-              <button type="button" class="btn-sec-modal" @click="showShiftModal = false">Batal</button>
-              <button type="submit" class="btn-primary-action">Simpan</button>
+            <div class="flex items-center justify-end gap-3 pt-4 mt-2 border-t border-slate-100">
+              <button type="button" class="h-[42px] px-5 bg-white border border-slate-200 text-slate-600 font-bold text-[13px] rounded-xl hover:bg-slate-50 transition-colors" @click="showShiftModal = false">Batal</button>
+              <button type="submit" class="h-[42px] px-6 bg-blue-600 hover:bg-blue-700 text-white font-bold text-[13px] rounded-xl shadow-[0_4px_10px_rgba(37,99,235,0.2)] transition-all">Simpan</button>
             </div>
           </form>
         </div>

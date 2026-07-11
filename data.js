@@ -8,7 +8,7 @@
 
 // --- CONFIGURATION ---
 // REPLACE THIS URL with your deployed Google Apps Script Web App URL
-var GAS_URL = "https://script.google.com/macros/s/AKfycbwJ9EHR0cBz01P_OoMTBOw7crYH41CqUFSoICFX5FyfD3kkclJuOPgggfFv5CVsTvxRgA/exec";
+var GAS_URL = "https://script.google.com/macros/s/AKfycbwxHMb0ikHvFOBnlNsfEQ-MqeDxVlv3KCHP4bW7K_UbNyMm5lfdVDWC_DQoEd277sZOpA/exec";
 
 // --- GLOBAL VARIABLES (STATE CONTAINER) ---
 var appState = Vue.reactive({
@@ -31,6 +31,7 @@ var appState = Vue.reactive({
     room_checklist: [],
     public_area_checklist: [], // Backwards compatibility
     projects: [], // Backwards compatibility
+    housekeeping_project_master: [],
     housekeeping_projects: [],
     staff_work_projects: [],
     inventory: [],
@@ -1713,3 +1714,277 @@ async function updateShiftLocal(shiftId, name, checkIn, checkOut, preIn, preOut,
     }
 }
 
+/**
+ * Updates application settings
+ */
+async function updateSettingsLocal(settingsData) {
+    showLoading("Menyimpan pengaturan...");
+    try {
+        const res = await runWithRetry({
+            action: "updateRecord",
+            sheetName: "tb_settings",
+            keyCol: "setting_id",
+            keyValue: "SET001",
+            updates: {
+                api_key: settingsData.api_key,
+                folder_url: settingsData.folder_url
+            }
+        });
+        if (res.success) {
+            if (appState.settings.length > 0) {
+                appState.settings[0].api_key = settingsData.api_key;
+                appState.settings[0].folder_url = settingsData.folder_url;
+            } else {
+                appState.settings.push({
+                    setting_id: "SET001",
+                    api_key: settingsData.api_key,
+                    folder_url: settingsData.folder_url
+                });
+            }
+            hideLoading();
+            showToast("✅ Pengaturan berhasil disimpan.", "success");
+            return true;
+        }
+        throw new Error(res.message);
+    } catch (error) {
+        hideLoading();
+        if (typeof Swal !== 'undefined') Swal.fire("Gagal", error.message, "error");
+        else showToast("Gagal menyimpan pengaturan.", "error");
+        return false;
+    }
+}
+
+/**
+ * Updates admin credentials
+ */
+async function updateAdminCredentialsLocal(adminData) {
+    showLoading("Menyimpan kredensial admin...");
+    try {
+        const updates = {
+            username: adminData.username,
+            name: adminData.name
+        };
+        if (adminData.password) {
+            updates.password = await hashPasswordSHA256(adminData.password);
+        }
+
+        const res = await runWithRetry({
+            action: "updateRecord",
+            sheetName: "tb_users",
+            keyCol: "user_id",
+            keyValue: appState.currentUser.user_id,
+            updates: updates
+        });
+
+        if (res.success) {
+            appState.currentUser.username = adminData.username;
+            appState.currentUser.name = adminData.name;
+
+            const idx = appState.users.findIndex(u => u.user_id === appState.currentUser.user_id);
+            if (idx !== -1) {
+                appState.users[idx].username = adminData.username;
+                appState.users[idx].name = adminData.name;
+            }
+
+            hideLoading();
+            showToast("✅ Kredensial admin berhasil diperbarui.", "success");
+            return true;
+        }
+        throw new Error(res.message);
+    } catch (error) {
+        hideLoading();
+        if (typeof Swal !== 'undefined') Swal.fire("Gagal", error.message, "error");
+        else showToast("Gagal menyimpan kredensial.", "error");
+        return false;
+    }
+}// Add Settings and Admin update functions
+async function updateSettingsLocal(settingsData) {
+    showLoading("Menyimpan pengaturan...");
+    try {
+        const res = await runWithRetry({
+            action: "updateSettings",
+            api_key: settingsData.api_key,
+            folder_url: settingsData.folder_url
+        });
+        if (res.success) {
+            if (appState.settings.length > 0) {
+                appState.settings[0].api_key = settingsData.api_key;
+                appState.settings[0].folder_url = settingsData.folder_url;
+            } else {
+                appState.settings.push({
+                    setting_id: 'SET1',
+                    api_key: settingsData.api_key,
+                    folder_url: settingsData.folder_url
+                });
+            }
+            hideLoading();
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({ title: "Berhasil!", text: "Pengaturan sistem berhasil disimpan.", icon: "success", timer: 2000, showConfirmButton: false });
+            } else {
+                showToast("✅ Pengaturan berhasil disimpan.", "success");
+            }
+            return true;
+        } else {
+            throw new Error(res.message || "Gagal menyimpan pengaturan.");
+        }
+    } catch (error) {
+        hideLoading();
+        if (typeof Swal !== 'undefined') {
+            Swal.fire("Gagal", error.message, "error");
+        } else {
+            showToast(`⚠️ Gagal: ${error.message}`, "error");
+        }
+        return false;
+    }
+}
+
+async function updateAdminCredentialsLocal(adminData) {
+    showLoading("Memperbarui kredensial admin...");
+    try {
+        const payload = {
+            action: "updateAdminCredentials",
+            username: adminData.username,
+            name: adminData.name
+        };
+        if (adminData.password && adminData.password.trim() !== '') {
+            payload.passwordHash = await hashPasswordSHA256(adminData.password);
+        }
+
+        const res = await runWithRetry(payload);
+        if (res.success) {
+            if (appState.currentUser) {
+                appState.currentUser.username = adminData.username;
+                appState.currentUser.name = adminData.name;
+            }
+            hideLoading();
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({ title: "Berhasil!", text: "Kredensial admin berhasil diperbarui.", icon: "success", timer: 2000, showConfirmButton: false });
+            } else {
+                showToast("✅ Kredensial admin berhasil diperbarui.", "success");
+            }
+            return true;
+        } else {
+            throw new Error(res.message || "Gagal memperbarui kredensial admin.");
+        }
+    } catch (error) {
+        hideLoading();
+        if (typeof Swal !== 'undefined') {
+            Swal.fire("Gagal", error.message, "error");
+        } else {
+            showToast(`⚠️ Gagal: ${error.message}`, "error");
+        }
+        return false;
+    }
+}
+
+async function generateDailyDataLocal() {
+    showLoading("Membuat data harian...");
+    try {
+        const res = await runWithRetry({
+            action: "generateDailyData"
+        });
+        if (res.success) {
+            hideLoading();
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({ title: "Berhasil!", text: res.message, icon: "success" });
+            } else {
+                showToast("✅ " + res.message, "success");
+            }
+            await fetchDataFromServer(); // Sync again to load newly generated data
+            return true;
+        } else {
+            throw new Error(res.message || "Gagal membuat data harian.");
+        }
+    } catch (error) {
+        hideLoading();
+        if (typeof Swal !== 'undefined') {
+            Swal.fire("Gagal", error.message, "error");
+        } else {
+            showToast(`⚠️ Gagal: ${error.message}`, "error");
+        }
+        return false;
+    }
+}
+
+async function addHouseKeepingMasterLocal(title, description, periodType, staffIds, startDate) {
+    showLoading("Menyimpan Master Proyek...");
+    try {
+        const masterId = "MAS" + Date.now().toString(36).toUpperCase();
+        const res = await runWithRetry({
+            action: "createRecord",
+            sheetName: "tb_housekeeping_project_master",
+            record: {
+                master_id: masterId,
+                title: title,
+                description: description,
+                period_type: periodType,
+                staff_ids: JSON.stringify(staffIds),
+                start_date: startDate,
+                last_generated_date: "",
+                is_active: true
+            }
+        });
+        if (res.success) {
+            hideLoading();
+            showToast("✅ Master proyek berhasil ditambahkan.", "success");
+            await fetchDataFromServer();
+            return true;
+        } else {
+            throw new Error(res.message);
+        }
+    } catch (error) {
+        hideLoading();
+        showToast(`⚠️ Gagal: ${error.message}`, "error");
+        return false;
+    }
+}
+
+async function updateHouseKeepingMasterLocal(masterId, updates) {
+    showLoading("Memperbarui Master Proyek...");
+    try {
+        const res = await runWithRetry({
+            action: "updateRecord",
+            sheetName: "tb_housekeeping_project_master",
+            keyCol: "master_id",
+            keyValue: masterId,
+            updates: updates
+        });
+        if (res.success) {
+            hideLoading();
+            showToast("✅ Master proyek berhasil diperbarui.", "success");
+            await fetchDataFromServer();
+            return true;
+        } else {
+            throw new Error(res.message);
+        }
+    } catch (error) {
+        hideLoading();
+        showToast(`⚠️ Gagal: ${error.message}`, "error");
+        return false;
+    }
+}
+
+async function updateHouseKeepingProjectLocal(projectId, updates) {
+    showLoading("Menyimpan status proyek...");
+    try {
+        const res = await runWithRetry({
+            action: "updateRecord",
+            sheetName: "tb_housekeeping_projects",
+            keyCol: "project_id",
+            keyValue: projectId,
+            updates: updates
+        });
+        if (res.success) {
+            hideLoading();
+            showToast("✅ Proyek berhasil diupdate.", "success");
+            await fetchDataFromServer();
+            return true;
+        } else {
+            throw new Error(res.message);
+        }
+    } catch (error) {
+        hideLoading();
+        showToast(`⚠️ Gagal: ${error.message}`, "error");
+        return false;
+    }
+}
