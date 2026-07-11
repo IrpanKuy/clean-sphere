@@ -95,7 +95,7 @@ const SidebarNavigation = {
           </button>
           <div class="nav-section-body" v-show="activeMenu === 'inventory'">
             <a href="#" :class="['sub-link', { active: activeSubmenu === 'inventory-stock' }]" @click.prevent="$emit('set-submenu', 'inventory-stock')">Stok Barang</a>
-            <a href="#" :class="['sub-link', { active: activeSubmenu === 'inventory-log' }]" @click.prevent="$emit('set-submenu', 'inventory-log')">Log Transaksi Jurnal</a>
+            <a href="#" :class="['sub-link', { active: activeSubmenu === 'inventory-log' }]" @click.prevent="$emit('set-submenu', 'inventory-log')">Mutasi Stok</a>
             <a href="#" :class="['sub-link', { active: activeSubmenu === 'inventory-categories' }]" @click.prevent="$emit('set-submenu', 'inventory-categories')">Konfigurasi Kategori</a>
           </div>
         </div>

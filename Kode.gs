@@ -232,6 +232,7 @@ function doPost(e) {
           sheetName: "tb_inventory",
           record: {
             item_id: payload.item_id,
+            item_code: payload.item_code,
             category_id: payload.category_id,
             item_name: payload.item_name,
             stock_initial: parseInt(payload.stock_initial, 10) || 0,
@@ -320,7 +321,7 @@ function setupDatabase() {
     "tb_room_checklist": ["checklist_id", "room_number", "staff_id", "date", "start_time", "end_time", "duration_minutes", "tasks_completed", "linen_changed", "refills", "status", "kpi_score"],
     "tb_housekeeping_projects": ["project_id", "title", "description", "type", "staff_id", "photo_url", "date", "status", "approved_by", "approved_at"],
     "tb_staff_work_projects": ["work_project_id", "title", "description", "period", "staff_id", "photo_url", "date"],
-    "tb_inventory": ["item_id", "category_id", "item_name", "stock_initial", "stock_in", "stock_out", "stock_current", "min_stock", "remarks"],
+    "tb_inventory": ["item_id", "item_code", "category_id", "item_name", "stock_initial", "stock_in", "stock_out", "stock_current", "min_stock", "remarks"],
     "tb_inventory_transactions": ["transaction_id", "item_id", "user_id", "type", "quantity", "date", "timestamp", "remarks"]
   };
   
@@ -535,10 +536,10 @@ function seedSheetData(name) {
     sheet.appendRow(["WPRJ001", "Pembersihan Taman Samping", "Pembersihan rumput liar dan daun kering", "Mingguan", "USR002", "", "2026-07-10"]);
   }
   else if (name === "tb_inventory") {
-    sheet.appendRow(["INV001", "CAT001", "Sprei Single Bed", 100, 10, 5, 105, 20, "Sprei katun putih single"]);
-    sheet.appendRow(["INV002", "CAT002", "Multi Purpose Cleaner", 50, 5, 2, 53, 10, "Pembersih serbaguna 1L"]);
-    sheet.appendRow(["INV003", "CAT004", "Tisu Toilet Roll", 200, 50, 15, 235, 50, "Tisu toilet gulung standard"]);
-    sheet.appendRow(["INV004", "CAT004", "Sabun Cair Handwash", 80, 20, 8, 92, 15, "Sabun cuci tangan botol"]);
+    sheet.appendRow(["INV001", "BRG001", "CAT001", "Sprei Single Bed", 100, 10, 5, 105, 20, "Sprei katun putih single"]);
+    sheet.appendRow(["INV002", "BRG002", "CAT002", "Multi Purpose Cleaner", 50, 5, 2, 53, 10, "Pembersih serbaguna 1L"]);
+    sheet.appendRow(["INV003", "BRG003", "CAT004", "Tisu Toilet Roll", 200, 50, 15, 235, 50, "Tisu toilet gulung standard"]);
+    sheet.appendRow(["INV004", "BRG004", "CAT004", "Sabun Cair Handwash", 80, 20, 8, 92, 15, "Sabun cuci tangan botol"]);
   }
   else if (name === "tb_inventory_transactions") {
     sheet.appendRow(["TX001", "INV001", "USR001", "in", 10, "2026-07-09", "2026-07-09T07:30:00.000Z", "Restock vendor"]);
@@ -609,9 +610,9 @@ function getSheetData(name) {
       const lower = header.toLowerCase();
       
       if (val instanceof Date) {
-        if (lower.includes("date") && !lower.includes("time") && !lower.includes("at")) {
+        if (lower.includes("date") && !lower.includes("time") && !lower.includes("_at")) {
           obj[header] = getFormattedCellValue(val, "date");
-        } else if (lower.includes("time") && !lower.includes("at") && !lower.includes("date") && val.getFullYear() === 1899) {
+        } else if (lower.includes("time") && !lower.includes("_at") && !lower.includes("date") && val.getFullYear() === 1899) {
           obj[header] = getFormattedCellValue(val, "time");
         } else {
           obj[header] = getFormattedCellValue(val, "timestamp");
@@ -675,9 +676,9 @@ function findRowInSheet(name, keyCol, val) {
         const lower = h.toLowerCase();
         
         if (v instanceof Date) {
-          if (lower.includes("date") && !lower.includes("time") && !lower.includes("at")) {
+          if (lower.includes("date") && !lower.includes("time") && !lower.includes("_at")) {
             obj[h] = getFormattedCellValue(v, "date");
-          } else if (lower.includes("time") && !lower.includes("at") && !lower.includes("date") && v.getFullYear() === 1899) {
+          } else if (lower.includes("time") && !lower.includes("_at") && !lower.includes("date") && v.getFullYear() === 1899) {
             obj[h] = getFormattedCellValue(v, "time");
           } else {
             obj[h] = getFormattedCellValue(v, "timestamp");

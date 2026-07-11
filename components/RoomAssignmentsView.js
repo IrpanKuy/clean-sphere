@@ -151,7 +151,9 @@ const RoomAssignmentsView = {
 
       <!-- Main Assignments Table -->
       <div class="table-card">
-        <table>
+        <div class="table-responsive">
+
+          <table>
           <thead>
             <tr>
               <th>Tanggal Tugas</th>
@@ -199,6 +201,8 @@ const RoomAssignmentsView = {
             </tr>
           </tbody>
         </table>
+
+        </div>
       </div>
 
       <!-- Modal: Tambah Penugasan Baru -->

@@ -63,15 +63,37 @@ const RoomHistoryView = {
       if (isNaN(date.getTime())) return isoStr;
       return date.toLocaleString('id-ID', { hour12: false });
     },
+    getLogLocalDateStr(timestamp) {
+      if (!timestamp) return "";
+      try {
+        const date = new Date(timestamp);
+        if (isNaN(date.getTime())) {
+          return String(timestamp).substring(0, 10);
+        }
+        
+        // Format to Asia/Jakarta timezone to align with database
+        const formatter = new Intl.DateTimeFormat('en-US', { 
+          timeZone: 'Asia/Jakarta', 
+          year: 'numeric', 
+          month: '2-digit', 
+          day: '2-digit' 
+        });
+        const parts = formatter.formatToParts(date);
+        const year = parts.find(p => p.type === 'year').value;
+        const month = parts.find(p => p.type === 'month').value;
+        const day = parts.find(p => p.type === 'day').value;
+        return `${year}-${month}-${day}`;
+      } catch (e) {
+        console.error("Timezone standardizing error:", e);
+        return String(timestamp).substring(0, 10);
+      }
+    },
     getAssociatedChecklist(log) {
       if (!log.timestamp) return null;
       
-      // Use local date conversion to prevent timezone shifts
-      const localDate = new Date(log.timestamp);
-      const y = localDate.getFullYear();
-      const m = String(localDate.getMonth() + 1).padStart(2, '0');
-      const d = String(localDate.getDate()).padStart(2, '0');
-      const logDateStr = `${y}-${m}-${d}`;
+      // Standardize search dates to prevent timezone mismatches
+      const logDateStr = this.getLogLocalDateStr(log.timestamp);
+      if (!logDateStr) return null;
       
       let found = (this.checklists || []).find(c => 
         String(c.room_number) === String(log.room_number) && 
@@ -150,39 +172,22 @@ const RoomHistoryView = {
 
       <!-- Main Riwayat Status Kamar Table -->
       <div class="table-card">
-        <table>
+        <div class="table-responsive">
+          <table>
           <thead>
             <tr>
-              <th style="width: 70px; text-align: center;">Detail</th>
               <th>Waktu Perubahan</th>
               <th>Kamar</th>
               <th>Status Lama</th>
               <th>Status Baru</th>
               <th>Diubah Oleh</th>
               <th>Durasi Status</th>
-              <th>Aksi</th>
+              <th style="width: 130px; text-align: center;">Aksi</th>
             </tr>
           </thead>
           <tbody>
             <template v-for="log in filteredHistory" :key="log.history_id">
               <tr>
-                <!-- Eye Icon Detail trigger -->
-                <td style="text-align: center;">
-                  <button 
-                    v-if="getAssociatedChecklist(log)" 
-                    @click="toggleRow(log.history_id)" 
-                    class="btn-eye-icon"
-                    :class="{ 'expanded-eye': isRowExpanded(log.history_id) }"
-                    :title="isRowExpanded(log.history_id) ? 'Tutup Detail' : 'Buka Detail'"
-                    style="display: inline-flex; align-items: center; justify-content: center;"
-                  >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" style="width: 15px; height: 15px;">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                  </button>
-                  <span v-else style="opacity: 0.3;">-</span>
-                </td>
                 <td><span class="font-compact">{{ formatTime(log.timestamp) }}</span></td>
                 <td><strong>Kamar {{ log.room_number }}</strong></td>
                 <td>
@@ -205,25 +210,42 @@ const RoomHistoryView = {
                   </span>
                   <span v-else>-</span>
                 </td>
-                <td>
-                  <button 
-                    v-if="getAssociatedChecklist(log)" 
-                    @click="triggerEdit(getAssociatedChecklist(log))" 
-                    class="btn-card-edit flex items-center gap-1" 
-                    style="padding: 4px 8px; width: auto; display: inline-flex; align-items: center;"
-                  >
-                    <svg class="w-3.5 h-3.5 text-blue-600 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width: 13px; height: 13px;">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" />
-                    </svg>
-                    Edit
-                  </button>
-                  <span v-else style="opacity: 0.3;">-</span>
+                <td style="white-space: nowrap; text-align: center;">
+                  <div style="display: inline-flex; align-items: center; gap: 8px;">
+                    <!-- Eye Icon Detail next to Edit button -->
+                    <button 
+                      v-if="getAssociatedChecklist(log)" 
+                      @click="toggleRow(log.history_id)" 
+                      class="btn-eye-icon"
+                      :class="{ 'expanded-eye': isRowExpanded(log.history_id) }"
+                      :title="isRowExpanded(log.history_id) ? 'Tutup Detail' : 'Buka Detail'"
+                      style="display: inline-flex; align-items: center; justify-content: center; padding: 6px;"
+                    >
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" style="width: 15px; height: 15px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    </button>
+                    
+                    <button 
+                      v-if="getAssociatedChecklist(log)" 
+                      @click="triggerEdit(getAssociatedChecklist(log))" 
+                      class="btn-card-edit flex items-center gap-1" 
+                      style="padding: 6px 10px; width: auto; display: inline-flex; align-items: center; margin: 0;"
+                    >
+                      <svg class="w-3.5 h-3.5 text-blue-600 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width: 13px; height: 13px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" />
+                      </svg>
+                      Edit
+                    </button>
+                    <span v-else style="opacity: 0.3;">-</span>
+                  </div>
                 </td>
               </tr>
 
               <!-- Accordion Dropdown Sub-Row -->
               <tr v-if="isRowExpanded(log.history_id) && getAssociatedChecklist(log)">
-                <td colspan="8" class="expanded-accordion-cell">
+                <td colspan="7" class="expanded-accordion-cell">
                   <checklist-detail-viewer
                     :checklist="getAssociatedChecklist(log)"
                     :rooms="rooms"
@@ -233,12 +255,13 @@ const RoomHistoryView = {
               </tr>
             </template>
             <tr v-if="filteredHistory.length === 0">
-              <td colspan="8" class="text-center-placeholder">
+              <td colspan="7" class="text-center-placeholder">
                 Belum ada riwayat perubahan status kamar tercatat.
               </td>
             </tr>
           </tbody>
         </table>
+        </div>
       </div>
 
       <!-- Checklist Editor Modal -->

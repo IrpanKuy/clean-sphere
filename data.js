@@ -8,7 +8,7 @@
 
 // --- CONFIGURATION ---
 // REPLACE THIS URL with your deployed Google Apps Script Web App URL
-var GAS_URL = "https://script.google.com/macros/s/AKfycbyQFkNcnK7uKB-ZB1q9p0crBlh3bnzJ1hL1hTMf_dMKvQ6Thf3fLzuYdwigO6_rcM-Mjg/exec";
+var GAS_URL = "https://script.google.com/macros/s/AKfycbwJ9EHR0cBz01P_OoMTBOw7crYH41CqUFSoICFX5FyfD3kkclJuOPgggfFv5CVsTvxRgA/exec";
 
 // --- GLOBAL VARIABLES (STATE CONTAINER) ---
 var appState = Vue.reactive({
@@ -1338,3 +1338,378 @@ async function updateRoomChecklistLocal(checklistId, tasksCompleted, linenChange
         return false;
     }
 }
+
+/**
+ * Adds a new inventory item
+ */
+async function addInventoryItemLocal(itemCode, categoryId, itemName, stockInitial, minStock, remarks = "") {
+    showLoading("Menambahkan barang inventaris...");
+    try {
+        const itemId = "INV" + Math.random().toString(36).substring(2, 10).toUpperCase();
+        const res = await runWithRetry({
+            action: "addInventoryItem",
+            item_id: itemId,
+            item_code: itemCode,
+            category_id: categoryId,
+            item_name: itemName,
+            stock_initial: Number(stockInitial) || 0,
+            min_stock: Number(minStock) || 5,
+            remarks: remarks
+        });
+        if (res.success) {
+            appState.inventory.push({
+                item_id: itemId,
+                item_code: itemCode,
+                category_id: categoryId,
+                item_name: itemName,
+                stock_initial: Number(stockInitial) || 0,
+                stock_in: 0,
+                stock_out: 0,
+                stock_current: Number(stockInitial) || 0,
+                min_stock: Number(minStock) || 5,
+                remarks: remarks
+            });
+            hideLoading();
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: "Berhasil!",
+                    text: `Barang ${itemName} berhasil ditambahkan.`,
+                    icon: "success",
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            } else {
+                showToast(`✅ Barang ${itemName} berhasil ditambahkan.`, "success");
+            }
+            return true;
+        } else {
+            throw new Error(res.message || "Gagal menambahkan barang.");
+        }
+    } catch (error) {
+        hideLoading();
+        if (typeof Swal !== 'undefined') {
+            Swal.fire("Gagal", error.message, "error");
+        } else {
+            showToast(`⚠️ Gagal: ${error.message}`, "error");
+        }
+        return false;
+    }
+}
+
+/**
+ * Updates an inventory item
+ */
+async function updateInventoryItemLocal(itemId, itemCode, categoryId, itemName, minStock, remarks = "") {
+    showLoading("Menyimpan pembaruan barang...");
+    try {
+        const res = await runWithRetry({
+            action: "updateRecord",
+            sheetName: "tb_inventory",
+            keyCol: "item_id",
+            keyValue: itemId,
+            updates: {
+                item_code: itemCode,
+                category_id: categoryId,
+                item_name: itemName,
+                min_stock: Number(minStock) || 5,
+                remarks: remarks
+            }
+        });
+        if (res.success) {
+            const idx = appState.inventory.findIndex(i => i.item_id === itemId);
+            if (idx !== -1) {
+                appState.inventory[idx].item_code = itemCode;
+                appState.inventory[idx].category_id = categoryId;
+                appState.inventory[idx].item_name = itemName;
+                appState.inventory[idx].min_stock = Number(minStock) || 5;
+                appState.inventory[idx].remarks = remarks;
+            }
+            hideLoading();
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: "Berhasil!",
+                    text: `Barang ${itemName} berhasil diperbarui.`,
+                    icon: "success",
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            } else {
+                showToast(`✅ Barang ${itemName} diperbarui.`, "success");
+            }
+            return true;
+        } else {
+            throw new Error(res.message || "Gagal memperbarui barang.");
+        }
+    } catch (error) {
+        hideLoading();
+        if (typeof Swal !== 'undefined') {
+            Swal.fire("Gagal", error.message, "error");
+        } else {
+            showToast(`⚠️ Gagal: ${error.message}`, "error");
+        }
+        return false;
+    }
+}
+
+/**
+ * Deletes an inventory item
+ */
+async function deleteInventoryItemLocal(itemId) {
+    showLoading("Menghapus barang inventaris...");
+    try {
+        const res = await runWithRetry({
+            action: "deleteRecord",
+            sheetName: "tb_inventory",
+            keyCol: "item_id",
+            keyValue: itemId
+        });
+        if (res.success) {
+            appState.inventory = appState.inventory.filter(i => i.item_id !== itemId);
+            hideLoading();
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: "Berhasil!",
+                    text: "Barang berhasil dihapus.",
+                    icon: "success",
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            } else {
+                showToast("✅ Barang berhasil dihapus.", "success");
+            }
+            return true;
+        } else {
+            throw new Error(res.message || "Gagal menghapus barang.");
+        }
+    } catch (error) {
+        hideLoading();
+        if (typeof Swal !== 'undefined') {
+            Swal.fire("Gagal", error.message, "error");
+        } else {
+            showToast(`⚠️ Gagal: ${error.message}`, "error");
+        }
+        return false;
+    }
+}
+
+/**
+ * Adds an inventory category
+ */
+async function addCategoryLocal(name, desc) {
+    showLoading("Menambahkan kategori...");
+    try {
+        const catId = "CAT" + Math.random().toString(36).substring(2, 10).toUpperCase();
+        const res = await runWithRetry({
+            action: "createRecord",
+            sheetName: "tb_inventory_categories",
+            record: {
+                category_id: catId,
+                category_name: name,
+                description: desc,
+                is_active: true
+            }
+        });
+        if (res.success) {
+            appState.inventory_categories.push({
+                category_id: catId,
+                category_name: name,
+                description: desc,
+                is_active: true
+            });
+            hideLoading();
+            return true;
+        }
+        throw new Error(res.message);
+    } catch (error) {
+        hideLoading();
+        if (typeof Swal !== 'undefined') Swal.fire("Gagal", error.message, "error");
+        return false;
+    }
+}
+
+/**
+ * Updates an inventory category
+ */
+async function updateCategoryLocal(catId, name, desc, isActive) {
+    showLoading("Memperbarui kategori...");
+    try {
+        const res = await runWithRetry({
+            action: "updateRecord",
+            sheetName: "tb_inventory_categories",
+            keyCol: "category_id",
+            keyValue: catId,
+            updates: {
+                category_name: name,
+                description: desc,
+                is_active: isActive
+            }
+        });
+        if (res.success) {
+            const idx = appState.inventory_categories.findIndex(c => c.category_id === catId);
+            if (idx !== -1) {
+                appState.inventory_categories[idx].category_name = name;
+                appState.inventory_categories[idx].description = desc;
+                appState.inventory_categories[idx].is_active = isActive;
+            }
+            hideLoading();
+            return true;
+        }
+        throw new Error(res.message);
+    } catch (error) {
+        hideLoading();
+        if (typeof Swal !== 'undefined') Swal.fire("Gagal", error.message, "error");
+        return false;
+    }
+}
+
+/**
+ * Adds a new user account
+ */
+async function addUserLocal(username, password, name, role, shiftId) {
+    showLoading("Menambahkan karyawan...");
+    try {
+        const userId = "USR" + Math.random().toString(36).substring(2, 10).toUpperCase();
+        const pwdHash = await hashPasswordSHA256(password);
+        const res = await runWithRetry({
+            action: "addUser",
+            user_id: userId,
+            username: username,
+            password: pwdHash,
+            name: name,
+            role: role,
+            shift_id: shiftId
+        });
+        if (res.success) {
+            appState.users.push({
+                user_id: userId,
+                username: username,
+                name: name,
+                role: role,
+                shift_id: shiftId,
+                status: "active"
+            });
+            hideLoading();
+            return true;
+        }
+        throw new Error(res.message);
+    } catch (error) {
+        hideLoading();
+        if (typeof Swal !== 'undefined') Swal.fire("Gagal", error.message, "error");
+        return false;
+    }
+}
+
+/**
+ * Updates a user account
+ */
+async function updateUserLocal(userId, username, password, name, role, shiftId, status) {
+    showLoading("Memperbarui data karyawan...");
+    try {
+        const updates = {
+            username: username,
+            name: name,
+            role: role,
+            shift_id: shiftId,
+            status: status
+        };
+        if (password) {
+            updates.password = await hashPasswordSHA256(password);
+        }
+        const res = await runWithRetry({
+            action: "updateUser",
+            user_id: userId,
+            ...updates
+        });
+        if (res.success) {
+            const idx = appState.users.findIndex(u => u.user_id === userId);
+            if (idx !== -1) {
+                appState.users[idx].username = username;
+                appState.users[idx].name = name;
+                appState.users[idx].role = role;
+                appState.users[idx].shift_id = shiftId;
+                appState.users[idx].status = status;
+            }
+            hideLoading();
+            return true;
+        }
+        throw new Error(res.message);
+    } catch (error) {
+        hideLoading();
+        if (typeof Swal !== 'undefined') Swal.fire("Gagal", error.message, "error");
+        return false;
+    }
+}
+
+/**
+ * Adds a new work shift configuration
+ */
+async function addShiftLocal(shiftId, name, checkIn, checkOut, preIn, preOut) {
+    showLoading("Menambahkan shift...");
+    try {
+        const res = await runWithRetry({
+            action: "addShift",
+            shift_id: shiftId,
+            shift_name: name,
+            check_in_time: checkIn,
+            check_out_time: checkOut,
+            pre_check_in_minutes: preIn,
+            pre_check_out_minutes: preOut
+        });
+        if (res.success) {
+            appState.shifts.push({
+                shift_id: shiftId,
+                shift_name: name,
+                check_in_time: checkIn,
+                check_out_time: checkOut,
+                pre_check_in_minutes: Number(preIn) || 30,
+                pre_check_out_minutes: Number(preOut) || 15,
+                is_active: true
+            });
+            hideLoading();
+            return true;
+        }
+        throw new Error(res.message);
+    } catch (error) {
+        hideLoading();
+        if (typeof Swal !== 'undefined') Swal.fire("Gagal", error.message, "error");
+        return false;
+    }
+}
+
+/**
+ * Updates a shift configuration
+ */
+async function updateShiftLocal(shiftId, name, checkIn, checkOut, preIn, preOut, isActive) {
+    showLoading("Memperbarui shift...");
+    try {
+        const res = await runWithRetry({
+            action: "updateShift",
+            shift_id: shiftId,
+            shift_name: name,
+            check_in_time: checkIn,
+            check_out_time: checkOut,
+            pre_check_in_minutes: preIn,
+            pre_check_out_minutes: preOut,
+            is_active: isActive
+        });
+        if (res.success) {
+            const idx = appState.shifts.findIndex(s => s.shift_id === shiftId);
+            if (idx !== -1) {
+                appState.shifts[idx].shift_name = name;
+                appState.shifts[idx].check_in_time = checkIn;
+                appState.shifts[idx].check_out_time = checkOut;
+                appState.shifts[idx].pre_check_in_minutes = Number(preIn);
+                appState.shifts[idx].pre_check_out_minutes = Number(preOut);
+                appState.shifts[idx].is_active = isActive;
+            }
+            hideLoading();
+            return true;
+        }
+        throw new Error(res.message);
+    } catch (error) {
+        hideLoading();
+        if (typeof Swal !== 'undefined') Swal.fire("Gagal", error.message, "error");
+        return false;
+    }
+}
+

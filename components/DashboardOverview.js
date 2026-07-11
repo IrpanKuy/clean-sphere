@@ -133,7 +133,10 @@ const DashboardOverview = {
       <div class="card table-card">
         <h3 class="card-title">Recent Housekeeping Activities</h3>
         
-        <table>
+        <div class="table-responsive">
+
+        
+          <table>
           <thead>
             <tr>
               <th>Staf Karyawan</th>
@@ -171,6 +174,8 @@ const DashboardOverview = {
             </tr>
           </tbody>
         </table>
+
+        </div>
       </div>
 
     </div>

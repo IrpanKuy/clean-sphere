@@ -117,6 +117,38 @@
           ></room-assignments-view>
         </div>
 
+        <div v-else-if="activeSubmenu.startsWith('inventory-')">
+          <inventory-management-view
+            :sub-tab="activeSubmenu"
+            :inventory="appState.inventory"
+            :inventory-transactions="appState.inventory_transactions"
+            :categories="appState.inventory_categories"
+            :users="appState.users"
+            @add-item="handleAddInventoryItem"
+            @update-item="handleUpdateInventoryItem"
+            @delete-item="handleDeleteInventoryItem"
+            @record-tx="handleRecordInventoryTx"
+            @add-category="handleAddCategory"
+            @update-category="handleUpdateCategory"
+          ></inventory-management-view>
+        </div>
+
+        <div v-else-if="activeSubmenu === 'staff-accounts' || activeSubmenu === 'leave-approvals' || activeSubmenu === 'shift-config' || activeSubmenu === 'attendance-kpi-report'">
+          <staff-management-view
+            :sub-tab="activeSubmenu"
+            :users="appState.users"
+            :shifts="appState.shifts"
+            :attendance="appState.attendance"
+            :leave-requests="appState.leave_requests"
+            :room-checklist="appState.room_checklist"
+            @add-user="handleAddUser"
+            @update-user="handleUpdateUser"
+            @approve-leave="handleApproveLeave"
+            @add-shift="handleAddShift"
+            @update-shift="handleUpdateShift"
+          ></staff-management-view>
+        </div>
+
         <!-- Fallback beautiful placeholder card for unbuilt pages -->
         <div v-else style="display: flex; justify-content: center; align-items: center; height: 100%; color: var(--text-muted);">
           <div style="text-align: center; padding: 40px; background-color: var(--white); border-radius: var(--radius-md); border: 1.5px dashed rgba(30, 58, 138, 0.15); width: 100%; max-width: 500px; box-shadow: var(--shadow-card);">
@@ -152,6 +184,8 @@
   <script src="components/RoomHistoryView.js"></script>
   <script src="components/RoomAssignmentsView.js"></script>
   <script src="components/RoomManagementView.js"></script>
+  <script src="components/InventoryManagementView.js"></script>
+  <script src="components/StaffManagementView.js"></script>
 
   <script>
     // =========================================================================
@@ -165,7 +199,9 @@
         'dashboard-overview': DashboardOverview,
         'room-management-view': RoomManagementView,
         'room-history-view': RoomHistoryView,
-        'room-assignments-view': RoomAssignmentsView
+        'room-assignments-view': RoomAssignmentsView,
+        'inventory-management-view': InventoryManagementView,
+        'staff-management-view': StaffManagementView
       },
       setup() {
         const activeMenu = ref(1);
@@ -310,7 +346,7 @@
             case 'staff-area-tasks': return 'Area Control Sheets > Penugasan Staf Area';
             case 'area-tasks-daily': return 'Area Control Sheets > Laporan Harian Area';
             case 'inventory-stock': return 'Manajemen Inventaris > Stok Barang';
-            case 'inventory-log': return 'Manajemen Inventaris > Log Transaksi Jurnal';
+            case 'inventory-log': return 'Manajemen Inventaris > Mutasi Stok';
             case 'inventory-categories': return 'Manajemen Inventaris > Konfigurasi Kategori';
             case 'housekeeping-projects': return 'HouseKeeping Projects > HouseKeeping Project';
             case 'staff-work-projects': return 'HouseKeeping Projects > Proyek Pekerjaan Staff';
@@ -362,6 +398,43 @@
 
         const handleDeleteAssignment = async (id) => {
           await deleteRoomAssignmentLocal(id);
+        };
+
+        // Inventory Handlers
+        const handleAddInventoryItem = async (code, catId, name, initial, min, remarks) => {
+          await addInventoryItemLocal(code, catId, name, initial, min, remarks);
+        };
+        const handleUpdateInventoryItem = async (id, code, catId, name, min, remarks) => {
+          await updateInventoryItemLocal(id, code, catId, name, min, remarks);
+        };
+        const handleDeleteInventoryItem = async (id) => {
+          await deleteInventoryItemLocal(id);
+        };
+        const handleRecordInventoryTx = async (itemId, type, qty, date, remarks) => {
+          await recordInventoryTxLocal(itemId, type, qty, date, remarks);
+        };
+        const handleAddCategory = async (name, desc) => {
+          await addCategoryLocal(name, desc);
+        };
+        const handleUpdateCategory = async (id, name, desc, isActive) => {
+          await updateCategoryLocal(id, name, desc, isActive);
+        };
+
+        // Staffing Handlers
+        const handleAddUser = async (username, password, name, role, shiftId) => {
+          await addUserLocal(username, password, name, role, shiftId);
+        };
+        const handleUpdateUser = async (userId, username, password, name, role, shiftId, status) => {
+          await updateUserLocal(userId, username, password, name, role, shiftId, status);
+        };
+        const handleApproveLeave = async (requestId, status) => {
+          await approveLeaveLocal(requestId, status);
+        };
+        const handleAddShift = async (id, name, inTime, outTime, toleranceIn, toleranceOut) => {
+          await addShiftLocal(id, name, inTime, outTime, toleranceIn, toleranceOut);
+        };
+        const handleUpdateShift = async (id, name, inTime, outTime, toleranceIn, toleranceOut, isActive) => {
+          await updateShiftLocal(id, name, inTime, outTime, toleranceIn, toleranceOut, isActive);
         };
 
         // Logout
@@ -428,7 +501,22 @@
           // Room assignments operations
           handleAddAssignment,
           handleUpdateAssignment,
-          handleDeleteAssignment
+          handleDeleteAssignment,
+
+          // Inventory Operations
+          handleAddInventoryItem,
+          handleUpdateInventoryItem,
+          handleDeleteInventoryItem,
+          handleRecordInventoryTx,
+          handleAddCategory,
+          handleUpdateCategory,
+
+          // Staffing Operations
+          handleAddUser,
+          handleUpdateUser,
+          handleApproveLeave,
+          handleAddShift,
+          handleUpdateShift
         };
       }
     }).mount('#app');
