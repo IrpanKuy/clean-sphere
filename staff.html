@@ -41,7 +41,7 @@
   <!-- SweetAlert2 -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <!-- Load data.js (State & Client APIs) -->
-  <script src="data.js"></script>
+  <script src="data.js?v=2"></script>
 
   <style>
     body {
@@ -105,14 +105,31 @@
       <div class="px-6 -mt-8 relative z-20 flex-1 flex flex-col">
         <!-- Attendance Card -->
         <div class="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-slate-100 flex flex-col items-center">
-          <div class="w-full flex justify-between text-xs font-semibold text-slate-500 mb-6">
-            <div class="text-center">
-              <span class="block">Shift Anda</span>
-              <span class="text-primary-navy">{{ currentShift.name }} ({{ currentShift.check_in_time }} - {{ currentShift.check_out_time }})</span>
+          <div class="w-full grid grid-cols-2 gap-4 text-xs font-semibold text-slate-500 mb-6 border-b border-slate-100/60 pb-4">
+            <div class="text-left">
+              <span class="block text-slate-400 font-medium">Shift Kerja</span>
+              <span class="text-sm font-bold text-primary-navy">{{ currentShift.name }}</span>
+              <span class="block text-[10px] font-medium text-slate-500 mt-0.5">({{ currentShift.check_in_time }} - {{ currentShift.check_out_time }})</span>
             </div>
-            <div class="text-center">
-              <span class="block">Status</span>
-              <span :class="attendanceStatus === 'Belum Absen' ? 'text-amber-500' : 'text-green-500'">{{ attendanceStatus }}</span>
+            <div class="text-right">
+              <span class="block text-slate-400 font-medium">Status Kehadiran</span>
+              <span :class="['text-sm font-black mt-0.5 block', 
+                attendanceStatus === 'Belum Absen' ? 'text-amber-500' : 
+                attendanceStatus.includes('Pending') ? 'text-blue-500' : 'text-emerald-500']">
+                {{ attendanceStatus }}
+              </span>
+            </div>
+          </div>
+          
+          <!-- Batas Waktu Absen Transparan di Awal -->
+          <div class="w-full grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100 text-xs mb-6">
+            <div>
+              <span class="block text-slate-400 font-medium">Bisa Absen Masuk Mulai</span>
+              <span class="text-sm font-black text-slate-700 block mt-0.5">{{ earliestClockInTime }} WIB</span>
+            </div>
+            <div>
+              <span class="block text-slate-400 font-medium">Bisa Absen Pulang Mulai</span>
+              <span class="text-sm font-black text-slate-700 block mt-0.5">{{ earliestClockOutTime }} WIB</span>
             </div>
           </div>
           
@@ -659,6 +676,17 @@
     </div>
   </div>
 
+    <!-- Global Toast Alert (Fixed bottom corner) -->
+    <div class="fixed bottom-5 left-1/2 -translate-x-1/2 z-[99999] flex flex-col gap-2 pointer-events-none w-full max-w-[320px] px-6" v-if="toast.show">
+      <div :class="['px-5 py-3.5 rounded-lg text-white text-[13px] font-semibold shadow-lg flex items-center justify-center gap-2.5 pointer-events-auto transition-all animate-[slideIn_0.3s_ease] text-center w-full', 
+        toast.type === 'pending' ? 'bg-slate-800 border-l-4 border-blue-500' : 
+        toast.type === 'success' ? 'bg-emerald-500' : 
+        toast.type === 'error' ? 'bg-rose-500' : 
+        'bg-slate-900']">
+        <span>{{ toast.message }}</span>
+      </div>
+    </div>
+
   </template>
 </div>
 
@@ -682,39 +710,25 @@ createApp({
 
     // Session Protection & Sync on Mount
     onMounted(async () => {
-      const token = localStorage.getItem("cs_session_token");
-      if (!token) {
-        Swal.fire({
-          icon: 'error',
-          title: 'Akses Ditolak',
-          text: 'Harap masuk terlebih dahulu.',
-          confirmButtonColor: '#1E3A8A'
-        }).then(() => {
-          window.location.href = 'index.html';
-        });
-        return;
-      }
-
       const loggedIn = await checkAutoLogin();
-      if (loggedIn && appState.currentUser && appState.currentUser.role === 'staff') {
-        await fetchDataFromServer();
-        isInitializing.value = false;
-        
+      isInitializing.value = false;
+
+      // Force redirect if not staff
+      if (!loggedIn || !appState.currentUser || appState.currentUser.role !== 'staff') {
+        const isGAS = window.location.hostname.includes("google.com") || window.location.hostname.includes("googleusercontent.com");
+        if (isGAS) {
+          window.location.href = GAS_URL;
+        } else {
+          window.location.href = "index.html";
+        }
+      } else {
         // Start live time updates
         updateTime();
         timerId = setInterval(updateTime, 1000);
-      } else {
-        localStorage.removeItem("cs_session_token");
-        Swal.fire({
-          icon: 'error',
-          title: 'Akses Ditolak',
-          text: 'Sesi Anda tidak valid atau Anda bukan staf.',
-          confirmButtonColor: '#1E3A8A'
-        }).then(() => {
-          window.location.href = 'index.html';
-        });
       }
     });
+
+    const toast = computed(() => appState.toast);
 
     onUnmounted(() => {
       if (timerId) clearInterval(timerId);
@@ -776,8 +790,9 @@ createApp({
     });
 
     const timeToMinutes = (timeStr) => {
-      const parts = timeStr.split(':');
-      return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+      const cleanTime = String(timeStr).replace('.', ':');
+      const parts = cleanTime.split(':');
+      return parseInt(parts[0], 10) * 60 + (parseInt(parts[1], 10) || 0);
     };
 
     const minutesToTime = (mins) => {
@@ -786,9 +801,29 @@ createApp({
       return String(h).padStart(2, '0') + ":" + String(m).padStart(2, '0');
     };
 
+    const earliestClockInTime = computed(() => {
+      if (!currentShift.value || !currentShift.value.check_in_time) return '--:--';
+      const sh = appState.shifts.find(s => s.shift_id === appState.currentUser.shift_id);
+      const preIn = sh ? (parseInt(sh.pre_check_in_minutes, 10) || 0) : 0;
+      const inMins = timeToMinutes(currentShift.value.check_in_time);
+      let earliestMins = inMins - preIn;
+      if (earliestMins < 0) earliestMins += 1440;
+      return minutesToTime(earliestMins);
+    });
+
+    const earliestClockOutTime = computed(() => {
+      if (!currentShift.value || !currentShift.value.check_out_time) return '--:--';
+      const sh = appState.shifts.find(s => s.shift_id === appState.currentUser.shift_id);
+      const preOut = sh ? (parseInt(sh.pre_check_out_minutes, 10) || 0) : 0;
+      const outMins = timeToMinutes(currentShift.value.check_out_time);
+      let earliestMins = outMins - preOut;
+      if (earliestMins < 0) earliestMins += 1440;
+      return minutesToTime(earliestMins);
+    });
+
     const checkClockInWindow = () => {
       if (!currentShift.value || !currentShift.value.check_in_time) {
-        return { allowed: false, reason: "Data shift tidak ditemukan." };
+        return { allowed: false };
       }
       
       const now = new Date();
@@ -809,6 +844,34 @@ createApp({
         allowed = (currentMins >= startMins && currentMins <= shiftOutMins);
       } else {
         allowed = (currentMins >= startMins || currentMins <= shiftOutMins);
+      }
+      
+      return { allowed: allowed };
+    };
+
+    const checkClockOutWindow = () => {
+      if (!currentShift.value || !currentShift.value.check_out_time) {
+        return { allowed: true };
+      }
+      
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Jakarta' });
+      const currentMins = timeToMinutes(timeStr);
+      
+      const shiftInMins = timeToMinutes(currentShift.value.check_in_time);
+      const shiftOutMins = timeToMinutes(currentShift.value.check_out_time);
+      
+      const sh = appState.shifts.find(s => s.shift_id === appState.currentUser.shift_id);
+      const preOutMins = sh ? (parseInt(sh.pre_check_out_minutes, 10) || 0) : 0;
+      
+      let startOutMins = shiftOutMins - preOutMins;
+      if (startOutMins < 0) startOutMins += 1440;
+      
+      let allowed = false;
+      if (shiftInMins <= shiftOutMins) {
+        allowed = (currentMins >= startOutMins || currentMins < shiftInMins);
+      } else {
+        allowed = (currentMins >= startOutMins && currentMins < shiftInMins);
       }
       
       return { allowed: allowed };
@@ -847,8 +910,8 @@ createApp({
             html: `
               <div class="text-left text-xs space-y-2.5 font-sans leading-relaxed text-slate-600 bg-slate-50 p-4.5 rounded-2xl border border-slate-100">
                 <div><strong class="text-slate-800">Shift Anda:</strong> ${currentShift.value.name} (${currentShift.value.check_in_time} - ${currentShift.value.check_out_time})</div>
-                <div><strong class="text-slate-800">Batas Awal Absen:</strong> ${startStr} (Toleransi ${sh.pre_check_in_minutes} menit sebelum shift)</div>
-                <div><strong class="text-slate-800">Batas Akhir Absen:</strong> ${currentShift.value.check_out_time} (Akhir shift)</div>
+                <div><strong class="text-slate-800">Waktu Minimal Absen Masuk:</strong> ${startStr} (${sh.pre_check_in_minutes} menit sebelum shift)</div>
+                <div><strong class="text-slate-800">Batas Akhir Absen Masuk:</strong> ${currentShift.value.check_out_time} (Akhir shift)</div>
                 <div class="border-t border-slate-200/60 pt-2.5 mt-2.5"><strong class="text-slate-800">Pukul Sekarang:</strong> ${timeStr}</div>
                 <div class="text-red-500 font-bold mt-1">⚠️ Absen masuk ditolak karena berada di luar waktu pengerjaan shift Anda.</div>
               </div>
@@ -864,6 +927,29 @@ createApp({
           Swal.fire('Berhasil', 'Waktu kehadiran Clock-In Anda telah dicatat (Pending).', 'success');
         }
       } else if (attendanceStatus.value === 'Sudah Clock-In (Pending)') {
+        // Validate shift clock-out window
+        const winOut = checkClockOutWindow();
+        if (!winOut.allowed) {
+          const sh = appState.shifts.find(s => s.shift_id === appState.currentUser.shift_id);
+          const startOutStr = minutesToTime((timeToMinutes(sh.check_out_time) - (parseInt(sh.pre_check_out_minutes, 10) || 0) + 1440) % 1440);
+          
+          Swal.fire({
+            icon: 'warning',
+            title: 'Belum Waktunya Pulang',
+            html: `
+              <div class="text-left text-xs space-y-2.5 font-sans leading-relaxed text-slate-600 bg-slate-50 p-4.5 rounded-2xl border border-slate-100">
+                <div><strong class="text-slate-800">Shift Anda:</strong> ${currentShift.value.name} (${currentShift.value.check_in_time} - ${currentShift.value.check_out_time})</div>
+                <div><strong class="text-slate-800">Waktu Minimal Absen Pulang:</strong> ${startOutStr} (${sh.pre_check_out_minutes} menit sebelum shift berakhir)</div>
+                <div class="border-t border-slate-200/60 pt-2.5 mt-2.5"><strong class="text-slate-800">Pukul Sekarang:</strong> ${timeStr}</div>
+                <div class="text-red-500 font-bold mt-1">⚠️ Anda belum diperizinkan melakukan Clock-Out sebelum mencapai waktu minimal kepulangan.</div>
+              </div>
+            `,
+            confirmButtonText: 'Saya Mengerti',
+            confirmButtonColor: '#EF4444'
+          });
+          return;
+        }
+
         Swal.fire({
           title: 'Clock Out?',
           text: "Anda yakin ingin menyelesaikan shift hari ini?",
@@ -895,6 +981,12 @@ createApp({
       }).then((result) => {
         if (result.isConfirmed) {
           logoutUser();
+          const isGAS = window.location.hostname.includes("google.com") || window.location.hostname.includes("googleusercontent.com");
+          if (isGAS) {
+            window.location.href = GAS_URL;
+          } else {
+            window.location.href = "index.html";
+          }
         }
       });
     };
@@ -1139,6 +1231,7 @@ createApp({
       isInitializing,
       currentView,
       handleLogout,
+      toast,
       currentUser,
       currentShift,
       attendanceStatus,
@@ -1146,7 +1239,10 @@ createApp({
       currentDate,
       canClockIn,
       hasActiveLeaveToday,
+      earliestClockInTime,
+      earliestClockOutTime,
       checkClockInWindow,
+      checkClockOutWindow,
       toggleAttendance,
       navigate,
       // Room Control

@@ -138,19 +138,39 @@ function compressImage(file, maxWidth = 1280, quality = 0.7) {
  * Triggers a Toast Notification (Navy Soft background by default)
  */
 function showToast(message, type = "success") {
-    appState.toast.show = true;
-    appState.toast.message = message;
-    appState.toast.type = type;
-
     console.log(`[Toast ${type}] ${message}`);
-
-    if (type === "success" || type === "info") {
-        setTimeout(() => {
-            // Clear only if it is still the same message
-            if (appState.toast.message === message) {
-                appState.toast.show = false;
-            }
-        }, 4000);
+    
+    if (typeof Swal !== 'undefined') {
+        if (type === "pending") {
+            Swal.fire({
+                title: message,
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+        } else if (type === "error") {
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal',
+                text: message,
+                confirmButtonColor: '#EF4444'
+            });
+        } else {
+            const Toast = Swal.mixin({
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true
+            });
+            Toast.fire({
+                icon: type === 'success' ? 'success' : 'info',
+                title: message
+            });
+        }
+    } else {
+        console.warn("SweetAlert2 is not defined.");
     }
 }
 
@@ -158,17 +178,7 @@ function showToast(message, type = "success") {
  * Shows SweetAlert2 loading spinner
  */
 function showLoading(message = "Memproses...") {
-    if (typeof Swal !== 'undefined') {
-        Swal.fire({
-            title: message,
-            allowOutsideClick: false,
-            didOpen: () => {
-                Swal.showLoading();
-            }
-        });
-    } else {
-        showToast(message, "pending");
-    }
+    showToast(message, "pending");
 }
 
 /**
@@ -244,15 +254,12 @@ async function loginUser(username, password) {
     }
 }
 
-/**
- * Verifies auto-login session token from localStorage
- */
 async function checkAutoLogin() {
     const token = localStorage.getItem("cs_session_token");
     if (!token) return false;
 
     try {
-        showToast("⏳ Memulihkan sesi masuk...", "pending");
+        showLoading("Memulihkan sesi masuk & memuat data...");
         const res = await runWithRetry({
             action: "verifySession",
             sessionToken: token
@@ -261,24 +268,27 @@ async function checkAutoLogin() {
         if (res.success) {
             appState.currentUser = res.user;
             appState.sessionToken = token;
-            showToast("✅ Masuk otomatis berhasil", "success");
 
             // Load database contents
             await fetchDataFromServer();
+            
+            hideLoading();
             return true;
         } else {
             // Invalid session token, clean storage
             localStorage.removeItem("cs_session_token");
-            showToast("Sesi kedalwarsa. Silakan login kembali.", "info");
+            hideLoading();
+            showToast("Sesi kedaluwarsa. Silakan login kembali.", "info");
             return false;
         }
     } catch (error) {
-        // Clear token on connection/CORS/server failure to prevent infinite redirect loops
         localStorage.removeItem("cs_session_token");
+        hideLoading();
         showToast(`⚠️ Gagal menghubungkan sesi: ${error.message}`, "error");
         return false;
     }
 }
+
 
 /**
  * Logs out user and clears sessions
