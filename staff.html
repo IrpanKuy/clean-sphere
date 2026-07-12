@@ -190,7 +190,7 @@
     <!-- Room List -->
     <div v-if="!selectedRoom" class="p-5 flex-1 overflow-y-auto">
       <div class="flex items-center justify-between mb-4">
-        <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Daftar Tugas Hari Ini</p>
+        <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Daftar Semua Kamar</p>
         <span class="bg-blue-100 text-blue-700 text-[10px] font-bold px-2.5 py-1 rounded-full">{{ dummyRooms.length }} Kamar</span>
       </div>
       
@@ -203,11 +203,11 @@
               {{ room.roomNumber }}
             </div>
             <div>
-              <p class="text-xs text-slate-400 font-medium flex items-center gap-1 mb-0.5">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                Batas Waktu
+              <p class="text-[10px] text-slate-400 font-medium flex items-center gap-1 mb-0.5 uppercase tracking-wide">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                Target Ideal: {{ room.ideal_timer_minutes || 30 }} Menit
               </p>
-              <h3 class="font-bold text-slate-700 text-sm">{{ room.deadline }}</h3>
+              <h3 class="font-bold text-slate-700 text-sm">Status: {{ room.status === 'Completed' ? 'Selesai (VC)' : 'Kotor (VD)' }}</h3>
             </div>
           </div>
           
@@ -262,12 +262,30 @@
 
           <div class="flex flex-col gap-3">
             <label v-for="(task, i) in dummyChecklist" :key="i" :class="['flex items-center gap-4 p-4 rounded-xl border-2 transition-all cursor-pointer shadow-sm', task.done ? 'bg-blue-50/50 border-blue-200' : 'bg-white border-slate-100 hover:border-blue-100']">
-              <div class="relative flex items-center justify-center">
+              <div class="relative flex items-center justify-center shrink-0">
                 <input type="checkbox" v-model="task.done" class="peer appearance-none w-6 h-6 border-2 border-slate-300 rounded-lg checked:border-primary-royal checked:bg-primary-royal transition-all cursor-pointer">
                 <svg class="absolute w-4 h-4 text-white pointer-events-none opacity-0 peer-checked:opacity-100 peer-checked:scale-100 scale-50 transition-all duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
               </div>
-              <span class="text-sm font-semibold transition-colors duration-300" :class="task.done ? 'text-primary-navy' : 'text-slate-600'">{{ task.name }}</span>
+              <span class="text-sm font-semibold transition-colors duration-300 leading-tight" :class="task.done ? 'text-primary-navy line-through opacity-70' : 'text-slate-600'">{{ task.name }}</span>
             </label>
+          </div>
+        </div>
+
+        <!-- Stok Inventaris Dalam Kamar -->
+        <div class="mb-8">
+          <h4 class="text-sm font-extrabold text-slate-700 mb-4 flex items-center gap-2">
+            <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+            Update Stok Inventaris Kamar
+          </h4>
+          <div class="flex flex-col gap-3">
+            <div v-for="(item, j) in dummyRoomInventory" :key="j" class="flex items-center justify-between bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+              <span class="text-[13px] font-bold text-slate-700">{{ item.name }}</span>
+              <div class="flex items-center gap-3">
+                <button @click="if(item.qty > 0) item.qty--" class="w-8 h-8 rounded-full bg-slate-100 text-slate-600 font-black hover:bg-slate-200 active:scale-95 transition-all">-</button>
+                <span class="w-8 text-center font-black text-lg text-primary-navy">{{ item.qty }}</span>
+                <button @click="item.qty++" class="w-8 h-8 rounded-full bg-slate-100 text-slate-600 font-black hover:bg-slate-200 active:scale-95 transition-all">+</button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -709,22 +727,32 @@ createApp({
       currentView.value = view;
     };
 
-    // --- Room Control Logic ---
+    // --- Room Control Logic ---    // Room state
     const dummyRooms = ref([
-      { id: 1, roomNumber: '101', deadline: '10:00 - 11:00', status: 'Pending', linenIn: 0, linenOut: 0 },
-      { id: 2, roomNumber: '105', deadline: '11:15 - 12:00', status: 'Pending', linenIn: 0, linenOut: 0 },
-      { id: 3, roomNumber: '202', deadline: '13:00 - 14:00', status: 'Completed', linenIn: 2, linenOut: 2 }
+      { id: 1, roomNumber: '101', status: 'Pending', ideal_timer_minutes: 30, linenIn: 0, linenOut: 0 },
+      { id: 2, roomNumber: '102', status: 'Pending', ideal_timer_minutes: 25, linenIn: 0, linenOut: 0 },
+      { id: 3, roomNumber: '103', status: 'Completed', ideal_timer_minutes: 40, linenIn: 2, linenOut: 2 },
+      { id: 4, roomNumber: '104', status: 'Pending', ideal_timer_minutes: 30, linenIn: 0, linenOut: 0 },
+      { id: 5, roomNumber: '105', status: 'Pending', ideal_timer_minutes: 20, linenIn: 0, linenOut: 0 },
     ]);
     const selectedRoom = ref(null);
     const roomTimer = ref(0);
-    const isRoomTimerRunning = ref(false);
     let intervalTimer = null;
+    const isRoomTimerRunning = ref(false);
 
     const dummyChecklist = ref([
+      { name: 'Ganti Sprei (Bed Making)', done: false },
+      { name: 'Bersihkan Toilet & Kaca', done: false },
       { name: 'Sapu & Pel Lantai', done: false },
-      { name: 'Bersihkan Kamar Mandi', done: false },
-      { name: 'Rapikan Tempat Tidur', done: false },
+      { name: 'Isi Ulang Amenities', done: false },
       { name: 'Buang Sampah', done: false }
+    ]);
+    
+    const dummyRoomInventory = ref([
+      { name: 'Sabun Cair (Botol)', qty: 2 },
+      { name: 'Shampo (Botol)', qty: 2 },
+      { name: 'Handuk Besar', qty: 2 },
+      { name: 'Air Mineral (Botol)', qty: 2 }
     ]);
 
     const completedChecklistCount = computed(() => {
@@ -740,9 +768,10 @@ createApp({
       selectedRoom.value = room;
       roomTimer.value = 0;
       isRoomTimerRunning.value = false;
-      // Reset checklist if pending
+      // Reset checklist and inventory if pending
       if (room.status === 'Pending') {
         dummyChecklist.value.forEach(t => t.done = false);
+        // Inventory would normally be fetched from room data, we'll just reset dummy here
       } else {
         dummyChecklist.value.forEach(t => t.done = true);
       }
@@ -878,6 +907,7 @@ createApp({
       roomTimer,
       isRoomTimerRunning,
       dummyChecklist,
+      dummyRoomInventory,
       completedChecklistCount,
       checklistProgress,
       openRoomDetail,

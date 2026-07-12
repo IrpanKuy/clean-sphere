@@ -202,7 +202,9 @@ function doPost(e) {
             last_cleaned_by: "",
             last_updated: new Date().toISOString(),
             checklist_config: payload.checklist_config || "{}",
-            remarks: payload.remarks || ""
+            remarks: payload.remarks || "",
+            ideal_timer_minutes: parseInt(payload.ideal_timer_minutes, 10) || 30,
+            room_inventory: payload.room_inventory || "[]"
           }
         });
         break;
@@ -223,7 +225,9 @@ function doPost(e) {
             room_number: String(payload.newRoomNumber),
             room_status: payload.roomStatus,
             checklist_config: payload.checklist_config,
-            remarks: payload.remarks || ""
+            remarks: payload.remarks || "",
+            ideal_timer_minutes: parseInt(payload.ideal_timer_minutes, 10) || 30,
+            room_inventory: payload.room_inventory || "[]"
           }
         });
         break;

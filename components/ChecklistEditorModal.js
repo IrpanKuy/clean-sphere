@@ -161,7 +161,7 @@ const ChecklistEditorModal = {
     }
   },
   template: `
-    <div class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto" v-if="show">
+    <div class="fixed inset-0 z-[9999] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto" v-if="show">
       <div class="bg-white rounded-2xl shadow-2xl w-full max-w-[600px] flex flex-col relative">
         <div class="flex items-center justify-between px-6 py-5 border-b border-slate-100">
           <h3 class="text-lg font-extrabold text-slate-900">Detail & Edit Laporan Pembersihan</h3>

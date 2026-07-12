@@ -42,7 +42,13 @@ const RoomManagementView = {
         { name: "Change", type: "inout", itemsText: "Bedding, Towel" },
         { name: "Refill", type: "in", itemsText: "Toiletries, Water Bottle" }
       ],
-      editingRoomChecklist: []
+      editingRoomChecklist: [],
+      editIdealTimer: 30,
+      
+      // Inventory Modal state
+      showInventoryModal: false,
+      inventoryRoomNumber: '',
+      inventoryItems: []
     };
   },
   computed: {
@@ -91,6 +97,7 @@ const RoomManagementView = {
       this.editRoomNumberInput = room.room_number;
       this.editRoomStatus = room.room_status;
       this.editRoomRemarks = room.remarks || '';
+      this.editIdealTimer = room.ideal_timer_minutes || 30;
       
       let list = [];
       if (room.checklist_config) {
@@ -141,8 +148,32 @@ const RoomManagementView = {
         }
       });
       const checklistConfig = JSON.stringify(configObj);
+      
+      // Mock update to parent (including ideal_timer and inventory). In reality, backend handles this.
       this.$emit('update-room', this.editingRoomNumber, this.editRoomNumberInput, this.editRoomStatus, checklistConfig, this.editRoomRemarks);
       this.showEditModal = false;
+    },
+    openInventoryModal(room) {
+      this.inventoryRoomNumber = room.room_number;
+      let items = [];
+      try {
+        if (room.room_inventory) {
+          items = JSON.parse(room.room_inventory);
+        }
+      } catch (e) { console.warn(e); }
+      
+      if (items.length === 0) {
+         items = [
+           { name: 'Sabun Kaca', qty: 2 },
+           { name: 'Pewangi Ruangan', qty: 1 }
+         ];
+      }
+      this.inventoryItems = items;
+      this.showInventoryModal = true;
+    },
+    submitInventoryModal() {
+      Swal.fire('Berhasil', `Inventaris kamar ${this.inventoryRoomNumber} disimpan. (Mock)`, 'success');
+      this.showInventoryModal = false;
     },
     confirmDeleteRoom(roomNumber) {
       Swal.fire({
@@ -259,57 +290,90 @@ const RoomManagementView = {
         </button>
       </div>
 
-      <!-- Room Cards Grid -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-        <div 
-          v-for="room in filteredRooms" 
-          :key="room.room_number" 
-          class="bg-white rounded-2xl shadow-[0_10px_25px_-5px_rgba(15,23,42,0.04)] border border-slate-100 flex flex-col overflow-hidden transition-transform hover:-translate-y-1 cursor-pointer"
-          :style="{ borderLeft: '5px solid ' + getStatusColor(room.room_status) }"
-          @click="selectRoomForQuickChange(room)"
-        >
-          <div class="flex justify-between items-center px-5 py-4 border-b border-slate-100 bg-slate-50/50">
-            <span class="text-base font-extrabold text-slate-900 tracking-tight">Kamar {{ room.room_number }}</span>
-            <span 
-              class="px-2.5 py-1 rounded-md text-[11px] font-bold text-white tracking-wide uppercase shadow-sm" 
-              :style="{ backgroundColor: getStatusColor(room.room_status) }"
-            >
-              {{ room.room_status }}
-            </span>
-          </div>
-          
-          <div class="flex flex-col gap-3 p-5 flex-1">
-            <div class="flex flex-col gap-0.5">
-              <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Keterangan:</span>
-              <span class="text-[13.5px] font-semibold text-slate-700 truncate" :title="room.remarks">{{ room.remarks || '-' }}</span>
-            </div>
-            <div class="flex flex-col gap-0.5">
-              <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Dibersihkan:</span>
-              <span class="text-[13.5px] font-semibold text-slate-700 tracking-tight">{{ room.last_cleaned_at ? new Date(room.last_cleaned_at).toLocaleDateString('id-ID') : '-' }}</span>
-            </div>
-            <div class="flex flex-col gap-0.5">
-              <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Oleh Staf:</span>
-              <span class="text-[13.5px] font-semibold text-slate-700">{{ getStaffName(room.last_cleaned_by) }}</span>
-            </div>
-          </div>
-
-          <div class="p-4 pt-0 border-t border-slate-100 bg-slate-50/30 mt-auto" @click.stop>
-            <button class="w-full h-9 mt-4 bg-white border border-slate-200 text-slate-600 font-bold text-[12px] rounded-lg hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200 transition-colors inline-flex items-center justify-center" @click="openEditModal(room)">
-              <svg class="w-3.5 h-3.5 text-blue-600 mr-1" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" />
-              </svg>
-              Edit Detail / Hapus
-            </button>
-          </div>
-        </div>
-
-        <div v-if="filteredRooms.length === 0" class="col-span-full py-16 text-center text-slate-400 text-sm font-medium bg-slate-50 border border-dashed border-slate-200 rounded-2xl">
-          🎈 Tidak ada kamar yang ditemukan.
+      <!-- Data Table Berjalan (Scrollable Table) -->
+      <div class="bg-white rounded-2xl shadow-[0_10px_25px_-5px_rgba(15,23,42,0.04)] border border-slate-100 flex flex-col w-full overflow-hidden mt-2">
+        <div class="overflow-x-auto w-full custom-scrollbar">
+          <table class="w-full min-w-[1000px] border-collapse text-left relative">
+            <thead>
+              <tr>
+                <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap sticky left-0 z-10 w-[120px]">No Kamar</th>
+                <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Status Kamar</th>
+                <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Keterangan</th>
+                <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Batas Timer Ideal</th>
+                <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Inventaris Kamar</th>
+                <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Aksi</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              <tr 
+                v-for="room in filteredRooms" 
+                :key="room.room_number"
+                class="transition-colors hover:bg-slate-50/50 group"
+                :style="{ borderLeft: '4px solid ' + getStatusColor(room.room_status) }"
+              >
+                <td class="py-3 px-4 align-middle bg-white group-hover:bg-slate-50/50 transition-colors sticky left-0 z-10">
+                  <strong class="text-[14px] font-black text-slate-800">Kamar {{ room.room_number }}</strong>
+                </td>
+                
+                <td class="py-3 px-4 align-middle">
+                  <div class="relative inline-block w-[160px]">
+                    <select 
+                      :value="room.room_status" 
+                      @change="e => { quickRoomNumber = room.room_number; quickStatus = e.target.value; quickRemarks = room.remarks; submitQuickChange(); }"
+                      class="w-full appearance-none px-3 py-1.5 rounded-lg text-[12px] font-bold text-white tracking-wide uppercase shadow-sm cursor-pointer border-none outline-none focus:ring-2 focus:ring-slate-300 transition-all"
+                      :style="{ backgroundColor: getStatusColor(room.room_status) }"
+                    >
+                      <option v-for="(cfg, code) in statusConfig" :key="code" :value="code" class="bg-white text-slate-800">
+                        {{ code }} - {{ cfg.name }}
+                      </option>
+                    </select>
+                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-white">
+                      <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
+                    </div>
+                  </div>
+                </td>
+                
+                <td class="py-3 px-4 align-middle">
+                  <span class="text-[12.5px] font-medium text-slate-600 truncate max-w-[200px] block" :title="room.remarks">{{ room.remarks || '-' }}</span>
+                </td>
+                
+                <td class="py-3 px-4 align-middle">
+                  <span class="inline-flex items-center gap-1.5 bg-slate-50 text-slate-600 border border-slate-200 px-2.5 py-1 rounded-md text-[12px] font-bold">
+                    <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    {{ room.ideal_timer_minutes || 30 }} Menit
+                  </span>
+                </td>
+                
+                <td class="py-3 px-4 align-middle">
+                  <button class="h-[32px] px-3 bg-amber-50 text-amber-600 border border-amber-200 font-bold text-[11.5px] rounded-lg hover:bg-amber-100 transition-colors inline-flex items-center gap-1.5" @click="openInventoryModal(room)">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+                    Kelola Stok
+                  </button>
+                </td>
+                
+                <td class="py-3 px-4 align-middle">
+                  <button 
+                    @click="openEditModal(room)" 
+                    class="h-[32px] px-3 bg-white border border-slate-200 text-slate-600 font-bold text-[12px] rounded-lg hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200 transition-colors inline-flex items-center justify-center shadow-sm gap-1"
+                  >
+                    <svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125"></path></svg>
+                    Detail
+                  </button>
+                </td>
+              </tr>
+              
+              <tr v-if="filteredRooms.length === 0">
+                <td colspan="6" class="py-12 px-4 text-center text-slate-400 text-sm font-medium bg-slate-50/30">
+                  Tidak ada data kamar yang ditemukan.
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
       <!-- Modal: Tambah Kamar Baru -->
-      <div class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto" v-if="showAddModal">
+      <div class="fixed inset-0 z-[9999] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto" v-if="showAddModal">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-[600px] flex flex-col relative">
           <div class="flex items-center justify-between px-6 py-5 border-b border-slate-100">
             <h3 class="text-lg font-extrabold text-slate-900">Tambah Kamar Baru</h3>
@@ -368,7 +432,7 @@ const RoomManagementView = {
       </div>
 
       <!-- Modal: Edit Detail / Hapus Kamar -->
-      <div class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto" v-if="showEditModal">
+      <div class="fixed inset-0 z-[9999] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto" v-if="showEditModal">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-[600px] flex flex-col relative">
           <div class="flex items-center justify-between px-6 py-5 border-b border-slate-100">
             <h3 class="text-lg font-extrabold text-slate-900">Edit Kamar {{ editingRoomNumber }}</h3>
@@ -419,6 +483,14 @@ const RoomManagementView = {
               <input type="text" v-model="editRoomRemarks" class="w-full h-[42px] px-3.5 bg-white border border-slate-200 rounded-xl text-[13.5px] font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm">
             </div>
 
+            <div class="flex flex-col gap-2">
+              <label class="text-[13px] font-bold text-slate-700">Batas Timer Ideal (Menit)</label>
+              <div class="flex items-center gap-3">
+                <input type="number" v-model="editIdealTimer" min="1" class="w-full h-[42px] px-3.5 bg-white border border-slate-200 rounded-xl text-[13.5px] font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm">
+                <span class="text-[13px] font-semibold text-slate-500">Menit</span>
+              </div>
+            </div>
+
             <div class="flex items-center justify-between pt-4 mt-2 border-t border-slate-100">
               <button type="button" class="h-[42px] px-4 bg-red-50 text-red-600 font-bold text-[13px] rounded-xl hover:bg-red-100 transition-colors inline-flex items-center gap-1.5" @click="confirmDeleteRoom(editingRoomNumber)">
                 <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -434,6 +506,42 @@ const RoomManagementView = {
           </form>
         </div>
       </div>
+      <!-- Modal: Kelola Inventaris Kamar -->
+      <div class="fixed inset-0 z-[9999] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto" v-if="showInventoryModal">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-[500px] flex flex-col relative">
+          <div class="flex items-center justify-between px-6 py-5 border-b border-slate-100 bg-amber-50 rounded-t-2xl">
+            <h3 class="text-lg font-extrabold text-amber-900">Inventaris Kamar {{ inventoryRoomNumber }}</h3>
+            <button class="w-8 h-8 rounded-full flex items-center justify-center bg-amber-100 hover:bg-amber-200 transition-colors text-amber-700" @click="showInventoryModal = false">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <form @submit.prevent="submitInventoryModal" class="flex flex-col gap-5 p-6 max-h-[75vh] overflow-y-auto custom-scrollbar">
+            
+            <p class="text-xs font-semibold text-slate-500 mb-2">Tentukan standar barang yang harus ada di dalam kamar ini.</p>
+            
+            <div class="flex flex-col gap-3">
+              <div v-for="(item, idx) in inventoryItems" :key="idx" class="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <input type="text" v-model="item.name" placeholder="Nama Barang (Cth: Sabun)" class="flex-1 h-[38px] px-3 bg-white border border-slate-200 rounded-lg text-[13px] font-medium text-slate-700 outline-none focus:border-amber-500 transition-colors" required>
+                <input type="number" v-model="item.qty" min="1" placeholder="Qty" class="w-[80px] h-[38px] px-3 bg-white border border-slate-200 rounded-lg text-[13px] font-medium text-slate-700 outline-none focus:border-amber-500 transition-colors text-center" required>
+                <button type="button" @click="inventoryItems.splice(idx, 1)" class="w-[38px] h-[38px] shrink-0 bg-red-50 text-red-500 rounded-lg font-bold text-lg hover:bg-red-100 transition-colors flex items-center justify-center">×</button>
+              </div>
+              
+              <button type="button" @click="inventoryItems.push({ name: '', qty: 1 })" class="h-[38px] w-full border border-dashed border-slate-300 rounded-lg text-[13px] font-bold text-slate-500 hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50 transition-colors mt-2 inline-flex items-center justify-center gap-1">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                Tambah Barang
+              </button>
+            </div>
+
+            <div class="flex items-center justify-end gap-3 pt-4 mt-2 border-t border-slate-100">
+              <button type="button" class="h-[42px] px-5 bg-white border border-slate-200 text-slate-600 font-bold text-[13px] rounded-xl hover:bg-slate-50 transition-colors" @click="showInventoryModal = false">Batal</button>
+              <button type="submit" class="h-[42px] px-6 bg-amber-500 hover:bg-amber-600 text-white font-bold text-[13px] rounded-xl shadow-lg shadow-amber-500/30 transition-all">Simpan Inventaris</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
     </div>
   `
 };
