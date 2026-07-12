@@ -1,110 +1,118 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="CleanSphere Pro: Manager Dashboard Overview">
   <title>CleanSphere Pro - Manager Dashboard</title>
-  
+
   <!-- Google Fonts: Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet">
+
   <!-- SweetAlert2 CDN -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  
+
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
-      tailwind.config = {
-          theme: {
-              extend: {
-                  colors: {
-                      primary: {
-                          navy: '#1E3A8A',
-                          royal: '#2563EB',
-                          dark: '#0F172A',
-                          hover: '#1E293B'
-                      },
-                      accent: {
-                          blue: '#3B82F6',
-                          light: '#EFF6FF'
-                      },
-                      status: {
-                          dirty: '#EF4444',
-                          clean: '#10B981',
-                          occupied: '#3B82F6',
-                          warning: '#F59E0B'
-                      }
-                  },
-                  fontFamily: {
-                      sans: ['Inter', 'sans-serif'],
-                  }
-              }
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: {
+              navy: '#1E3A8A',
+              royal: '#2563EB',
+              dark: '#0F172A',
+              hover: '#1E293B'
+            },
+            accent: {
+              blue: '#3B82F6',
+              light: '#EFF6FF'
+            },
+            status: {
+              dirty: '#EF4444',
+              clean: '#10B981',
+              occupied: '#3B82F6',
+              warning: '#F59E0B'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
           }
+        }
       }
+    }
   </script>
   <style type="text/tailwindcss">
-      @layer utilities {
+    @layer utilities {
           [v-cloak] {
               display: none !important;
           }
       }
   </style>
 </head>
+
 <body class="bg-slate-50 text-slate-900 min-h-screen flex overflow-hidden font-sans">
 
   <div id="app" class="flex w-full h-screen" v-cloak>
-    
+
     <!-- Fullscreen Initial Loader Overlay -->
-    <div class="fixed inset-0 bg-slate-50 flex flex-col justify-center items-center z-[99999] gap-4" v-if="isInitializing">
+    <div class="fixed inset-0 bg-slate-50 flex flex-col justify-center items-center z-[99999] gap-4"
+      v-if="isInitializing">
       <div class="w-12 h-12 border-4 border-slate-200 border-t-primary-navy rounded-full animate-spin"></div>
       <div class="text-[15px] font-semibold text-primary-navy tracking-tight">Memverifikasi Sesi...</div>
     </div>
-    
+
     <!-- Mobile Sidebar Backdrop Overlay -->
-    <div class="fixed inset-0 bg-slate-900/50 z-[998] lg:hidden" v-if="isSidebarOpen" @click="isSidebarOpen = false"></div>
+    <div class="fixed inset-0 bg-slate-900/50 z-[998] lg:hidden" v-if="isSidebarOpen" @click="isSidebarOpen = false">
+    </div>
 
     <!-- Left Sidebar Component -->
-    <sidebar-navigation 
-      :current-user="currentUser" 
-      :active-menu="activeMenu"
-      :active-submenu="activeSubmenu"
-      :is-sidebar-open="isSidebarOpen"
-      @set-menu="setMenu"
-      @toggle-menu="toggleMenu"
-      @set-submenu="setSubmenu"
-      @logout="handleLogout"
-      @close-sidebar="isSidebarOpen = false"
-    ></sidebar-navigation>
+    <sidebar-navigation :current-user="currentUser" :active-menu="activeMenu" :active-submenu="activeSubmenu"
+      :is-sidebar-open="isSidebarOpen" @set-menu="setMenu" @toggle-menu="toggleMenu" @set-submenu="setSubmenu"
+      @logout="handleLogout" @close-sidebar="isSidebarOpen = false"></sidebar-navigation>
 
     <!-- Main Content Area -->
     <main class="flex-grow flex flex-col h-screen overflow-hidden">
-      
+
       <!-- Top Header Navbar -->
-      <header class="h-[80px] bg-white border-b border-slate-100 flex justify-between items-center px-4 md:px-10 shrink-0">
+      <header
+        class="h-[80px] bg-white border-b border-slate-100 flex justify-between items-center px-4 md:px-10 shrink-0">
         <div class="flex items-center gap-4">
-          <button class="lg:hidden bg-transparent border-none text-2xl text-slate-900 cursor-pointer p-1 outline-none" @click="isSidebarOpen = !isSidebarOpen">
+          <button class="lg:hidden bg-transparent border-none text-2xl text-slate-900 cursor-pointer p-1 outline-none"
+            @click="isSidebarOpen = !isSidebarOpen">
             ☰
           </button>
           <div class="text-xl md:text-[22px] font-extrabold text-slate-900 tracking-tight">{{ getMenuTitle() }}</div>
         </div>
-        
+
         <div class="flex items-center gap-4">
-          <button v-if="currentUser && (currentUser.role === 'admin' || currentUser.role === 'manager')" @click="generateDailyDataLocal" class="px-3 md:px-4.5 py-2.5 text-[13px] font-semibold bg-indigo-50 border-1.5 border-indigo-500/20 rounded-lg text-indigo-700 cursor-pointer flex items-center gap-2 transition-all duration-200 hover:bg-indigo-100 hover:-translate-y-[1px]">
+          <button v-if="currentUser && (currentUser.role === 'admin' || currentUser.role === 'manager')"
+            @click="generateDailyDataLocal"
+            class="px-3 md:px-4.5 py-2.5 text-[13px] font-semibold bg-indigo-50 border-1.5 border-indigo-500/20 rounded-lg text-indigo-700 cursor-pointer flex items-center gap-2 transition-all duration-200 hover:bg-indigo-100 hover:-translate-y-[1px]">
             <svg class="w-4 h-4 text-indigo-700" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             Buat Data Harian
           </button>
-          
-          <button class="px-3 md:px-4.5 py-2.5 text-[13px] font-semibold bg-accent-light border-1.5 border-blue-500/10 rounded-lg text-primary-navy cursor-pointer flex items-center gap-2 transition-all duration-200 hover:bg-blue-100 hover:-translate-y-[1px]" @click="syncDataGlobal" :disabled="syncing">
-            <svg class="w-4 h-4 text-primary-navy animate-spin" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" v-if="syncing">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+
+          <button
+            class="px-3 md:px-4.5 py-2.5 text-[13px] font-semibold bg-accent-light border-1.5 border-blue-500/10 rounded-lg text-primary-navy cursor-pointer flex items-center gap-2 transition-all duration-200 hover:bg-blue-100 hover:-translate-y-[1px]"
+            @click="syncDataGlobal" :disabled="syncing">
+            <svg class="w-4 h-4 text-primary-navy animate-spin" fill="none" stroke="currentColor" stroke-width="2"
+              viewBox="0 0 24 24" v-if="syncing">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
             </svg>
-            <svg class="w-4 h-4 text-primary-navy" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" v-else>
-              <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+            <svg class="w-4 h-4 text-primary-navy" fill="none" stroke="currentColor" stroke-width="2"
+              viewBox="0 0 24 24" v-else>
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
             </svg>
             {{ syncing ? 'Syncing...' : 'Sync Data' }}
           </button>
@@ -113,121 +121,84 @@
 
       <!-- Workspace Area -->
       <section class="flex-grow p-4 md:p-10 overflow-y-auto">
-        
+
         <!-- Render menu 1: Dashboard Overview -->
         <div v-if="activeSubmenu === 'overview'">
-          <dashboard-overview
-            :rooms-summary="roomsSummary"
-            :total-rooms="totalRooms"
-            :staff-active-count="staffActiveCount"
-            :average-kpi="averageKpi"
-            :critical-stock-alerts="criticalStockAlerts"
-            :recent-activities="recentActivities"
-          ></dashboard-overview>
+          <dashboard-overview :rooms-summary="roomsSummary" :total-rooms="totalRooms"
+            :staff-active-count="staffActiveCount" :average-kpi="averageKpi"
+            :critical-stock-alerts="criticalStockAlerts" :recent-activities="recentActivities"></dashboard-overview>
         </div>
 
         <!-- Render menu 2 submenus -->
-        <div v-else-if="activeSubmenu === 'room-grid'">
-          <room-management-view
+        <div v-else-if="activeSubmenu === 'inventory-rooms'">
+          <room-inventory-view
             :rooms="appState.rooms"
-            :users="appState.users"
-            :status-history="appState.room_status_history"
-            @update-status="handleQuickUpdateStatus"
-            @add-room="handleAddNewRoom"
-            @update-room="handleEditRoomDetails"
-            @delete-room="handleDeleteRoomDetails"
-          ></room-management-view>
+            :inventory="appState.inventory"
+            @update-room-inventory="handleUpdateRoomInventory"
+          ></room-inventory-view>
+        </div>
+
+        <div v-else-if="activeSubmenu === 'room-grid'">
+          <room-management-view :rooms="appState.rooms" :users="appState.users"
+            :status-history="appState.room_status_history" @update-status="handleQuickUpdateStatus"
+            @add-room="handleAddNewRoom" @update-room="handleEditRoomDetails"
+            @delete-room="handleDeleteRoomDetails"></room-management-view>
         </div>
 
         <div v-else-if="activeSubmenu === 'room-history'">
-          <room-history-view
-            :status-history="appState.room_status_history"
-            :users="appState.users"
-            :checklists="appState.room_checklist"
-            :rooms="appState.rooms"
-            @update-checklist="handleUpdateChecklistLog"
-          ></room-history-view>
+          <room-history-view :status-history="appState.room_status_history" :users="appState.users"
+            :checklists="appState.room_checklist" :rooms="appState.rooms"
+            @update-checklist="handleUpdateChecklistLog"></room-history-view>
         </div>
 
-        <div v-else-if="activeSubmenu === 'room-assignments'">
-          <room-assignments-view
-            :assignments="appState.room_assignments"
-            :rooms="appState.rooms"
-            :users="appState.users"
-            @add-assignment="handleAddAssignment"
-            @update-assignment="handleUpdateAssignment"
-            @delete-assignment="handleDeleteAssignment"
-          ></room-assignments-view>
+        <div v-else-if="activeSubmenu === 'inventory-rooms'">
+          <room-inventory-view :rooms="appState.rooms" :inventory="appState.inventory"
+            @update-room-inventory="handleUpdateRoomInventory"></room-inventory-view>
         </div>
 
         <div v-else-if="activeSubmenu.startsWith('inventory-')">
-          <inventory-management-view
-            :sub-tab="activeSubmenu"
-            :inventory="appState.inventory"
-            :inventory-transactions="appState.inventory_transactions"
-            :categories="appState.inventory_categories"
-            :users="appState.users"
-            @add-item="handleAddInventoryItem"
-            @update-item="handleUpdateInventoryItem"
-            @delete-item="handleDeleteInventoryItem"
-            @record-tx="handleRecordInventoryTx"
-            @add-category="handleAddCategory"
-            @update-category="handleUpdateCategory"
-          ></inventory-management-view>
+          <inventory-management-view :sub-tab="activeSubmenu" :inventory="appState.inventory"
+            :inventory-transactions="appState.inventory_transactions" :categories="appState.inventory_categories"
+            :users="appState.users" @add-item="handleAddInventoryItem" @update-item="handleUpdateInventoryItem"
+            @delete-item="handleDeleteInventoryItem" @record-tx="handleRecordInventoryTx"
+            @add-category="handleAddCategory" @update-category="handleUpdateCategory"></inventory-management-view>
         </div>
 
-        <div v-else-if="activeSubmenu === 'staff-accounts' || activeSubmenu === 'leave-approvals' || activeSubmenu === 'shift-config' || activeSubmenu === 'attendance-kpi-report'">
-          <staff-management-view
-            :sub-tab="activeSubmenu"
-            :users="appState.users"
-            :shifts="appState.shifts"
-            :attendance="appState.attendance"
-            :leave-requests="appState.leave_requests"
-            :room-checklist="appState.room_checklist"
-            @add-user="handleAddUser"
-            @update-user="handleUpdateUser"
-            @approve-leave="handleApproveLeave"
-            @add-shift="handleAddShift"
-            @update-shift="handleUpdateShift"
-          ></staff-management-view>
+        <div
+          v-else-if="activeSubmenu === 'staff-accounts' || activeSubmenu === 'leave-approvals' || activeSubmenu === 'shift-config' || activeSubmenu === 'attendance-kpi-report'">
+          <staff-management-view :sub-tab="activeSubmenu" :users="appState.users" :shifts="appState.shifts"
+            :attendance="appState.attendance" :leave-requests="appState.leave_requests"
+            :room-checklist="appState.room_checklist" @add-user="handleAddUser" @update-user="handleUpdateUser"
+            @approve-leave="handleApproveLeave" @add-shift="handleAddShift"
+            @update-shift="handleUpdateShift"></staff-management-view>
         </div>
 
         <div v-else-if="activeSubmenu === 'app-settings'">
-          <app-settings-view
-            :settings="appState.settings"
-            :current-user="appState.currentUser"
-            @update-settings="handleUpdateSettings"
-            @update-admin="handleUpdateAdmin"
-          ></app-settings-view>
+          <app-settings-view :settings="appState.settings" :current-user="appState.currentUser"
+            @update-settings="handleUpdateSettings" @update-admin="handleUpdateAdmin"></app-settings-view>
         </div>
 
         <div v-else-if="activeSubmenu === 'housekeeping-master' || activeSubmenu === 'housekeeping-instances'">
-          <housekeeping-projects-view
-            :sub-tab="activeSubmenu"
-            :masters="appState.housekeeping_project_master"
-            :instances="appState.housekeeping_projects"
-            :users="appState.users"
-            @add-master="handleAddHouseKeepingMaster"
-            @update-master="handleUpdateHouseKeepingMaster"
-            @update-instance="handleUpdateHouseKeepingProject"
-          ></housekeeping-projects-view>
+          <housekeeping-projects-view :sub-tab="activeSubmenu" :masters="appState.housekeeping_project_master"
+            :instances="appState.housekeeping_projects" :users="appState.users"
+            @add-master="handleAddHouseKeepingMaster" @update-master="handleUpdateHouseKeepingMaster"
+            @update-instance="handleUpdateHouseKeepingProject"></housekeeping-projects-view>
         </div>
 
         <div v-else-if="activeSubmenu === 'staff-work-projects'">
-          <staff-work-projects-view
-            :projects="appState.staff_work_projects"
-            :users="appState.users"
+          <staff-work-projects-view :projects="appState.staff_work_projects" :users="appState.users"
             @add-project="handleAddStaffWorkProject"
-            @update-project="handleUpdateStaffWorkProject"
-          ></staff-work-projects-view>
+            @update-project="handleUpdateStaffWorkProject"></staff-work-projects-view>
         </div>
 
         <!-- Fallback beautiful placeholder card for unbuilt pages -->
         <div v-else class="flex justify-center items-center h-full text-slate-500">
-          <div class="text-center p-10 bg-white rounded-xl border-1.5 border-dashed border-blue-900/15 w-full max-w-[500px] shadow-lg">
+          <div
+            class="text-center p-10 bg-white rounded-xl border-1.5 border-dashed border-blue-900/15 w-full max-w-[500px] shadow-lg">
             <div class="text-[56px] mb-4">📋</div>
             <h3 class="text-primary-navy text-[18px] font-bold">{{ getMenuTitle().split(' > ').pop() }}</h3>
-            <p class="text-[13.5px] mt-2 leading-relaxed text-slate-500">Fitur ini sedang disiapkan dan diselaraskan secara bertahap sesuai kebutuhan operasional ERD & RACS.</p>
+            <p class="text-[13.5px] mt-2 leading-relaxed text-slate-500">Fitur ini sedang disiapkan dan diselaraskan
+              secara bertahap sesuai kebutuhan operasional ERD & RACS.</p>
           </div>
         </div>
 
@@ -249,7 +220,7 @@
 
   <!-- Load Vue 3 via CDN -->
   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-  
+
   <!-- Load data.js (State & Client APIs) -->
   <script src="data.js"></script>
 
@@ -259,7 +230,7 @@
   <script src="components/ChecklistDetailViewer.js"></script>
   <script src="components/ChecklistEditorModal.js"></script>
   <script src="components/RoomHistoryView.js"></script>
-  <script src="components/RoomAssignmentsView.js"></script>
+  <script src="components/RoomInventoryView.js"></script>
   <script src="components/RoomManagementView.js"></script>
   <script src="components/InventoryManagementView.js"></script>
   <script src="components/StaffManagementView.js"></script>
@@ -279,7 +250,7 @@
         'dashboard-overview': DashboardOverview,
         'room-management-view': RoomManagementView,
         'room-history-view': RoomHistoryView,
-        'room-assignments-view': RoomAssignmentsView,
+        'room-inventory-view': RoomInventoryView,
         'inventory-management-view': InventoryManagementView,
         'staff-management-view': StaffManagementView,
         'app-settings-view': AppSettingsView,
@@ -343,7 +314,7 @@
         // Simulate recent activities for dashboard view
         const recentActivities = computed(() => {
           const list = [];
-          
+
           // 1. Process room checklists completed today
           appState.room_checklist.slice(-3).forEach(c => {
             list.push({
@@ -423,12 +394,8 @@
             case 'overview': return 'Dashboard Utama';
             case 'room-grid': return 'Room Control Sheets > Room Grid View';
             case 'room-history': return 'Room Control Sheets > Riwayat Status Kamar';
-            case 'room-assignments': return 'Room Control Sheets > Tugas Staff';
-            case 'areas-data': return 'Area Control Sheets > Data Area';
-            case 'area-shifts': return 'Area Control Sheets > Konfigurasi Shift Area';
-            case 'staff-area-tasks': return 'Area Control Sheets > Penugasan Staf Area';
-            case 'area-tasks-daily': return 'Area Control Sheets > Laporan Harian Area';
             case 'inventory-stock': return 'Manajemen Inventaris > Stok Barang';
+            case 'inventory-rooms': return 'Manajemen Inventaris > Inventaris Kamar';
             case 'inventory-log': return 'Manajemen Inventaris > Mutasi Stok';
             case 'inventory-categories': return 'Manajemen Inventaris > Konfigurasi Kategori';
             case 'housekeeping-master': return 'HouseKeeping Projects > Master Proyek Rutin';
@@ -459,21 +426,21 @@
           await updateRoomChecklistLocal(checklistId, tasksCompleted, linenChanged, refills, kpiScore, extraData);
         };
 
-        const handleAddNewRoom = async (roomNumber, status, checklistConfig, remarks) => {
-          await addRoomLocal(roomNumber, status, checklistConfig, remarks);
+        const handleAddNewRoom = async (roomNumber, status, checklistConfig, remarks, idealTimer) => {
+          await addRoomLocal(roomNumber, status, checklistConfig, remarks, idealTimer);
         };
 
-        const handleEditRoomDetails = async (oldRoomNumber, newRoomNumber, status, checklistConfig, remarks) => {
-          await updateRoomLocal(oldRoomNumber, newRoomNumber, status, checklistConfig, remarks);
+        const handleEditRoomDetails = async (oldRoomNumber, newRoomNumber, status, checklistConfig, remarks, idealTimer) => {
+          await updateRoomLocal(oldRoomNumber, newRoomNumber, status, checklistConfig, remarks, idealTimer);
         };
 
         const handleDeleteRoomDetails = async (roomNumber) => {
           await deleteRoomLocal(roomNumber);
         };
 
-        // Room Assignments Handlers
-        const handleAddAssignment = async (date, roomNumber, staffId, statusFrom, statusTo, remarks) => {
-          await addRoomAssignmentLocal(date, roomNumber, staffId, statusFrom, statusTo, remarks);
+        // Inventory Room Handler
+        const handleUpdateRoomInventory = async (roomNumber, inventoryData) => {
+          await updateRoomInventoryLocal(roomNumber, inventoryData);
         };
 
         // HouseKeeping & Staff Project Handlers
@@ -487,18 +454,10 @@
           await updateHouseKeepingProjectLocal(projectId, updates);
         };
         const handleAddStaffWorkProject = async (title, description, period, staffId, date, photoBase64, photoName) => {
-          // Implement if needed or rely on existing handleSubmitStaffWorkProjectAction
+          // Implement if needed or rely on existing
         };
         const handleUpdateStaffWorkProject = async (projectId, updates) => {
           // Update API
-        };
-
-        const handleUpdateAssignment = async (id, date, roomNumber, staffId, statusFrom, statusTo, remarks, status) => {
-          await updateRoomAssignmentLocal(id, date, roomNumber, staffId, statusFrom, statusTo, remarks, status);
-        };
-
-        const handleDeleteAssignment = async (id) => {
-          await deleteRoomAssignmentLocal(id);
         };
 
         // Inventory Handlers
@@ -603,17 +562,15 @@
           syncDataGlobal,
           handleLogout,
 
-           // Room operations
+          // Room operations
           handleQuickUpdateStatus,
           handleUpdateChecklistLog,
           handleAddNewRoom,
           handleEditRoomDetails,
           handleDeleteRoomDetails,
 
-          // Room assignments operations
-          handleAddAssignment,
-          handleUpdateAssignment,
-          handleDeleteAssignment,
+          // Inventory Room operations
+          handleUpdateRoomInventory,
 
           // Inventory Operations
           handleAddInventoryItem,
@@ -641,4 +598,5 @@
     }).mount('#app');
   </script>
 </body>
+
 </html>

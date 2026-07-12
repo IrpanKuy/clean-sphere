@@ -69,6 +69,27 @@ const ChecklistDetailViewer = {
       return categories;
     }
   },
+  methods: {
+    formatTimeValue(val) {
+      if (!val) return '-';
+      if (typeof val === 'string' && val.includes('T')) {
+        try {
+          const d = new Date(val);
+          if (!isNaN(d.getTime())) {
+            return d.toLocaleTimeString('id-ID', { 
+              hour: '2-digit', 
+              minute: '2-digit', 
+              hour12: false, 
+              timeZone: 'Asia/Jakarta' 
+            });
+          }
+        } catch (e) {
+          console.warn("Error parsing date in ChecklistDetailViewer:", e);
+        }
+      }
+      return val;
+    }
+  },
   template: `
     <div class="bg-white rounded-2xl shadow-[0_10px_25px_-5px_rgba(15,23,42,0.04)] border border-slate-100 flex flex-col w-full mt-4 overflow-hidden">
       <div class="bg-slate-50 border-b border-slate-100 px-5 py-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
@@ -82,7 +103,7 @@ const ChecklistDetailViewer = {
           <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          Waktu Kerja: <strong class="text-slate-700">{{ checklist.start_time }} - {{ checklist.end_time }}</strong> ({{ checklist.duration_minutes }} menit)
+          Waktu Kerja: <strong class="text-slate-700">{{ formatTimeValue(checklist.start_time) }} - {{ formatTimeValue(checklist.end_time) }}</strong> ({{ checklist.duration_minutes }} menit)
         </span>
       </div>
       

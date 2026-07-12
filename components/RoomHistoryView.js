@@ -11,6 +11,7 @@ const RoomHistoryView = {
   data() {
     return {
       searchQuery: '',
+      statusFilter: '',
       expandedHistoryIds: [],
       // Modal states
       showChecklistModal: false,
@@ -35,6 +36,10 @@ const RoomHistoryView = {
     filteredHistory() {
       let list = this.statusHistory ? [...this.statusHistory] : [];
       list.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      
+      if (this.statusFilter) {
+        list = list.filter(h => h.new_status === this.statusFilter || h.old_status === this.statusFilter);
+      }
       
       if (this.searchQuery) {
         const q = this.searchQuery.toLowerCase();
@@ -168,6 +173,15 @@ const RoomHistoryView = {
           </span>
           <input type="text" v-model="searchQuery" placeholder="Cari nomor kamar, status, atau petugas..." class="w-full h-[42px] pl-10 pr-4 bg-white border border-slate-200 rounded-xl text-[13.5px] font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm">
         </div>
+        <div class="flex items-center gap-3">
+          <label class="text-[13px] font-bold text-slate-700 whitespace-nowrap">Filter Status:</label>
+          <select v-model="statusFilter" class="h-[42px] px-3.5 bg-white border border-slate-200 rounded-xl text-[13px] font-semibold text-slate-700 outline-none focus:border-blue-500 transition-all shadow-sm min-w-[150px]">
+            <option value="">Semua Status</option>
+            <option v-for="(cfg, code) in statusConfig" :key="code" :value="code">
+              {{ code }} - {{ cfg.name }}
+            </option>
+          </select>
+        </div>
       </div>
 
       <!-- Main Riwayat Status Kamar Table -->
@@ -182,6 +196,8 @@ const RoomHistoryView = {
               <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Status Baru</th>
               <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Diubah Oleh</th>
               <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Durasi Status</th>
+              <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Batas Ideal</th>
+              <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Skor KPI</th>
               <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap text-center last:rounded-tr-lg" style="width: 130px;">Aksi</th>
             </tr>
           </thead>
@@ -207,6 +223,22 @@ const RoomHistoryView = {
                       <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     {{ log.duration_minutes }} menit
+                  </span>
+                  <span v-else class="text-slate-400">-</span>
+                </td>
+                <td class="py-3.5 px-4 align-middle">
+                  <span class="text-[13px] font-semibold text-slate-600" v-if="log.ideal_timer_minutes">
+                    {{ log.ideal_timer_minutes }} menit
+                  </span>
+                  <span v-else class="text-slate-400">-</span>
+                </td>
+                <td class="py-3.5 px-4 align-middle">
+                  <span v-if="log.kpi_score !== undefined && log.kpi_score !== null"
+                        :class="['px-2 py-0.5 rounded-full text-[11px] font-extrabold shadow-sm border', 
+                          Number(log.kpi_score) >= 80 ? 'bg-green-50 text-green-600 border-green-200' :
+                          Number(log.kpi_score) >= 50 ? 'bg-amber-50 text-amber-600 border-amber-200' :
+                          'bg-red-50 text-red-600 border-red-200']">
+                    {{ log.kpi_score }}
                   </span>
                   <span v-else class="text-slate-400">-</span>
                 </td>
@@ -243,7 +275,7 @@ const RoomHistoryView = {
 
               <!-- Accordion Dropdown Sub-Row -->
               <tr v-if="isRowExpanded(log.history_id) && getAssociatedChecklist(log)">
-                <td colspan="7" class="p-0 bg-slate-50/50 border-b border-slate-200">
+                <td colspan="9" class="p-0 bg-slate-50/50 border-b border-slate-200">
                   <div class="p-6 border-l-4 border-l-blue-500">
                     <checklist-detail-viewer
                       :checklist="getAssociatedChecklist(log)"
@@ -255,7 +287,7 @@ const RoomHistoryView = {
               </tr>
             </template>
             <tr v-if="filteredHistory.length === 0">
-              <td colspan="7" class="py-12 px-4 text-center text-slate-400 text-sm font-medium bg-slate-50/30">
+              <td colspan="9" class="py-12 px-4 text-center text-slate-400 text-sm font-medium bg-slate-50/30">
                 Belum ada riwayat perubahan status kamar tercatat.
               </td>
             </tr>

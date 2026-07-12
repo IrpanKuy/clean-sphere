@@ -12,11 +12,11 @@ const RoomManagementView = {
       quickRoomNumber: '',
       quickStatus: 'VD',
       quickRemarks: '',
-      // Modal state
       showAddModal: false,
       newRoomNumber: '',
       newRoomStatus: 'VD',
       newRoomRemarks: '',
+      newIdealTimer: 30,
       // Edit Modal state
       showEditModal: false,
       editingRoomNumber: '',
@@ -43,12 +43,7 @@ const RoomManagementView = {
         { name: "Refill", type: "in", itemsText: "Toiletries, Water Bottle" }
       ],
       editingRoomChecklist: [],
-      editIdealTimer: 30,
-      
-      // Inventory Modal state
-      showInventoryModal: false,
-      inventoryRoomNumber: '',
-      inventoryItems: []
+      editIdealTimer: 30
     };
   },
   computed: {
@@ -56,8 +51,8 @@ const RoomManagementView = {
       let list = this.rooms || [];
       if (this.searchQuery) {
         const q = this.searchQuery.toLowerCase();
-        list = list.filter(r => 
-          String(r.room_number).toLowerCase().includes(q) || 
+        list = list.filter(r =>
+          String(r.room_number).toLowerCase().includes(q) ||
           (r.remarks && r.remarks.toLowerCase().includes(q))
         );
       }
@@ -98,7 +93,7 @@ const RoomManagementView = {
       this.editRoomStatus = room.room_status;
       this.editRoomRemarks = room.remarks || '';
       this.editIdealTimer = room.ideal_timer_minutes || 30;
-      
+
       let list = [];
       if (room.checklist_config) {
         try {
@@ -149,31 +144,9 @@ const RoomManagementView = {
       });
       const checklistConfig = JSON.stringify(configObj);
       
-      // Mock update to parent (including ideal_timer and inventory). In reality, backend handles this.
-      this.$emit('update-room', this.editingRoomNumber, this.editRoomNumberInput, this.editRoomStatus, checklistConfig, this.editRoomRemarks);
+      // Emit the update event, passing editIdealTimer as well
+      this.$emit('update-room', this.editingRoomNumber, this.editRoomNumberInput, this.editRoomStatus, checklistConfig, this.editRoomRemarks, this.editIdealTimer);
       this.showEditModal = false;
-    },
-    openInventoryModal(room) {
-      this.inventoryRoomNumber = room.room_number;
-      let items = [];
-      try {
-        if (room.room_inventory) {
-          items = JSON.parse(room.room_inventory);
-        }
-      } catch (e) { console.warn(e); }
-      
-      if (items.length === 0) {
-         items = [
-           { name: 'Sabun Kaca', qty: 2 },
-           { name: 'Pewangi Ruangan', qty: 1 }
-         ];
-      }
-      this.inventoryItems = items;
-      this.showInventoryModal = true;
-    },
-    submitInventoryModal() {
-      Swal.fire('Berhasil', `Inventaris kamar ${this.inventoryRoomNumber} disimpan. (Mock)`, 'success');
-      this.showInventoryModal = false;
     },
     confirmDeleteRoom(roomNumber) {
       Swal.fire({
@@ -207,10 +180,11 @@ const RoomManagementView = {
         }
       });
       const checklistConfig = JSON.stringify(configObj);
-      this.$emit('add-room', this.newRoomNumber, this.newRoomStatus, checklistConfig, this.newRoomRemarks);
+      this.$emit('add-room', this.newRoomNumber, this.newRoomStatus, checklistConfig, this.newRoomRemarks, this.newIdealTimer);
       this.newRoomNumber = '';
       this.newRoomStatus = 'VD';
       this.newRoomRemarks = '';
+      this.newIdealTimer = 30;
       this.newRoomChecklist = [
         { name: "Cleaning", type: "checklist", itemsText: "Trash, Bed Making, Floor, Toilet" },
         { name: "Change", type: "inout", itemsText: "Bedding, Towel" },
@@ -300,7 +274,6 @@ const RoomManagementView = {
                 <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Status Kamar</th>
                 <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Keterangan</th>
                 <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Batas Timer Ideal</th>
-                <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Inventaris Kamar</th>
                 <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Aksi</th>
               </tr>
             </thead>
@@ -344,11 +317,7 @@ const RoomManagementView = {
                   </span>
                 </td>
                 
-                <td class="py-3 px-4 align-middle">
-                  <button class="h-[32px] px-3 bg-amber-50 text-amber-600 border border-amber-200 font-bold text-[11.5px] rounded-lg hover:bg-amber-100 transition-colors inline-flex items-center gap-1.5" @click="openInventoryModal(room)">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
-                    Kelola Stok
-                  </button>
+                  </span>
                 </td>
                 
                 <td class="py-3 px-4 align-middle">
@@ -422,6 +391,14 @@ const RoomManagementView = {
             <div class="flex flex-col gap-2">
               <label class="text-[13px] font-bold text-slate-700">Catatan (Remarks)</label>
               <input type="text" v-model="newRoomRemarks" placeholder="Masukkan catatan awal" class="w-full h-[42px] px-3.5 bg-white border border-slate-200 rounded-xl text-[13.5px] font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm">
+            </div>
+            
+            <div class="flex flex-col gap-2">
+              <label class="text-[13px] font-bold text-slate-700">Batas Timer Ideal (Menit)</label>
+              <div class="flex items-center gap-3">
+                <input type="number" v-model="newIdealTimer" min="1" class="w-full h-[42px] px-3.5 bg-white border border-slate-200 rounded-xl text-[13.5px] font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm">
+                <span class="text-[13px] font-semibold text-slate-500">Menit</span>
+              </div>
             </div>
             <div class="flex items-center justify-end gap-3 pt-4 mt-2 border-t border-slate-100">
               <button type="button" class="h-[42px] px-5 bg-white border border-slate-200 text-slate-600 font-bold text-[13px] rounded-xl hover:bg-slate-50 transition-colors" @click="showAddModal = false">Batal</button>
@@ -505,40 +482,6 @@ const RoomManagementView = {
             </div>
           </form>
         </div>
-      </div>
-      <!-- Modal: Kelola Inventaris Kamar -->
-      <div class="fixed inset-0 z-[9999] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto" v-if="showInventoryModal">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-[500px] flex flex-col relative">
-          <div class="flex items-center justify-between px-6 py-5 border-b border-slate-100 bg-amber-50 rounded-t-2xl">
-            <h3 class="text-lg font-extrabold text-amber-900">Inventaris Kamar {{ inventoryRoomNumber }}</h3>
-            <button class="w-8 h-8 rounded-full flex items-center justify-center bg-amber-100 hover:bg-amber-200 transition-colors text-amber-700" @click="showInventoryModal = false">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-          <form @submit.prevent="submitInventoryModal" class="flex flex-col gap-5 p-6 max-h-[75vh] overflow-y-auto custom-scrollbar">
-            
-            <p class="text-xs font-semibold text-slate-500 mb-2">Tentukan standar barang yang harus ada di dalam kamar ini.</p>
-            
-            <div class="flex flex-col gap-3">
-              <div v-for="(item, idx) in inventoryItems" :key="idx" class="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                <input type="text" v-model="item.name" placeholder="Nama Barang (Cth: Sabun)" class="flex-1 h-[38px] px-3 bg-white border border-slate-200 rounded-lg text-[13px] font-medium text-slate-700 outline-none focus:border-amber-500 transition-colors" required>
-                <input type="number" v-model="item.qty" min="1" placeholder="Qty" class="w-[80px] h-[38px] px-3 bg-white border border-slate-200 rounded-lg text-[13px] font-medium text-slate-700 outline-none focus:border-amber-500 transition-colors text-center" required>
-                <button type="button" @click="inventoryItems.splice(idx, 1)" class="w-[38px] h-[38px] shrink-0 bg-red-50 text-red-500 rounded-lg font-bold text-lg hover:bg-red-100 transition-colors flex items-center justify-center">×</button>
-              </div>
-              
-              <button type="button" @click="inventoryItems.push({ name: '', qty: 1 })" class="h-[38px] w-full border border-dashed border-slate-300 rounded-lg text-[13px] font-bold text-slate-500 hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50 transition-colors mt-2 inline-flex items-center justify-center gap-1">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-                Tambah Barang
-              </button>
-            </div>
-
-            <div class="flex items-center justify-end gap-3 pt-4 mt-2 border-t border-slate-100">
-              <button type="button" class="h-[42px] px-5 bg-white border border-slate-200 text-slate-600 font-bold text-[13px] rounded-xl hover:bg-slate-50 transition-colors" @click="showInventoryModal = false">Batal</button>
-              <button type="submit" class="h-[42px] px-6 bg-amber-500 hover:bg-amber-600 text-white font-bold text-[13px] rounded-xl shadow-lg shadow-amber-500/30 transition-all">Simpan Inventaris</button>
-            </div>
-          </form>
         </div>
       </div>
 

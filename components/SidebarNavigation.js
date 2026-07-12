@@ -58,7 +58,6 @@ const SidebarNavigation = {
           <div class="flex flex-col gap-0.5 ml-[30px] border-l border-slate-200 mt-1" v-show="activeMenu === 'room'">
             <a href="#" :class="['block px-4 py-2 text-xs font-semibold rounded-r-lg transition-colors no-underline', activeSubmenu === 'room-grid' ? 'text-primary-royal bg-blue-50/50' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50']" @click.prevent="$emit('set-submenu', 'room-grid')">Room Grid View</a>
             <a href="#" :class="['block px-4 py-2 text-xs font-semibold rounded-r-lg transition-colors no-underline', activeSubmenu === 'room-history' ? 'text-primary-royal bg-blue-50/50' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50']" @click.prevent="$emit('set-submenu', 'room-history')">Riwayat Status Kamar</a>
-            <a href="#" :class="['block px-4 py-2 text-xs font-semibold rounded-r-lg transition-colors no-underline', activeSubmenu === 'room-assignments' ? 'text-primary-royal bg-blue-50/50' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50']" @click.prevent="$emit('set-submenu', 'room-assignments')">Tugas Staff</a>
           </div>
         </div>
 
@@ -98,6 +97,7 @@ const SidebarNavigation = {
           </button>
           <div class="flex flex-col gap-0.5 ml-[30px] border-l border-slate-200 mt-1" v-show="activeMenu === 'inventory'">
             <a href="#" :class="['block px-4 py-2 text-xs font-semibold rounded-r-lg transition-colors no-underline', activeSubmenu === 'inventory-stock' ? 'text-primary-royal bg-blue-50/50' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50']" @click.prevent="$emit('set-submenu', 'inventory-stock')">Stok Barang</a>
+            <a href="#" :class="['block px-4 py-2 text-xs font-semibold rounded-r-lg transition-colors no-underline', activeSubmenu === 'inventory-rooms' ? 'text-primary-royal bg-blue-50/50' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50']" @click.prevent="$emit('set-submenu', 'inventory-rooms')">Inventaris Kamar</a>
             <a href="#" :class="['block px-4 py-2 text-xs font-semibold rounded-r-lg transition-colors no-underline', activeSubmenu === 'inventory-log' ? 'text-primary-royal bg-blue-50/50' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50']" @click.prevent="$emit('set-submenu', 'inventory-log')">Mutasi Stok</a>
             <a href="#" :class="['block px-4 py-2 text-xs font-semibold rounded-r-lg transition-colors no-underline', activeSubmenu === 'inventory-categories' ? 'text-primary-royal bg-blue-50/50' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50']" @click.prevent="$emit('set-submenu', 'inventory-categories')">Kategori</a>
           </div>

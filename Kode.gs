@@ -231,6 +231,17 @@ function doPost(e) {
           }
         });
         break;
+      case "updateRoomInventory":
+        result = handleUpdateRecord({
+          sheetName: "tb_rooms",
+          keyCol: "room_number",
+          keyValue: String(payload.room_number),
+          userId: payload.userId,
+          updates: {
+            room_inventory: payload.room_inventory
+          }
+        });
+        break;
       case "addInventoryItem":
         result = handleCreateRecord({
           sheetName: "tb_inventory",
@@ -351,9 +362,9 @@ function setupDatabase() {
     "tb_attendance": ["attendance_id", "user_id", "shift_id", "date", "check_in_time", "check_out_time", "status", "late_checkout_minutes"],
     "tb_leave_requests": ["request_id", "user_id", "leave_type", "start_date", "end_date", "reason", "proof_url", "status", "approved_by", "approved_at"],
     "tb_settings": ["setting_id", "api_key", "folder_url"],
-    "tb_rooms": ["room_number", "room_status", "last_cleaned_at", "last_cleaned_by", "last_updated", "checklist_config", "remarks"],
+    "tb_rooms": ["room_number", "room_status", "last_cleaned_at", "last_cleaned_by", "last_updated", "checklist_config", "remarks", "ideal_timer_minutes", "room_inventory"],
     "tb_room_assignments": ["assignment_id", "date", "room_number", "staff_id", "target_status_from", "target_status_to", "remarks", "status"],
-    "tb_room_status_history": ["history_id", "room_number", "old_status", "new_status", "changed_by", "timestamp", "duration_minutes"],
+    "tb_room_status_history": ["history_id", "room_number", "old_status", "new_status", "changed_by", "timestamp", "duration_minutes", "ideal_timer_minutes", "kpi_score"],
     "tb_room_statuses": ["status_id", "status_code", "status_name", "color_hex", "description", "is_active"],
     "tb_areas": ["area_id", "area_name", "id_number", "shift_ids"],
     "tb_area_shifts": ["area_shift_id", "shift_name", "start_time", "end_time"],
@@ -427,7 +438,7 @@ function seedSheetData(name) {
   const sheet = ss.getSheetByName(name);
   if (!sheet) return;
   
-  const defaultHash = "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9"; // SHA-256 for admin123
+  const defaultHash = "b4f41429071c948a6a12288f667f47fdf3c6be365164fc5d0d1ff45874096218"; // SHA-256 for CleanSphere2026!
   
   if (name === "tb_users") {
     sheet.appendRow(["USR001", "admin", defaultHash, "Manager CleanSphere", "manager", "S1", "active"]);
@@ -467,21 +478,28 @@ function seedSheetData(name) {
         "items": ["Toiletries", "Water Bottle"]
       }
     });
-    sheet.appendRow(["101", "VD", "2026-07-10T08:00:00.000Z", "USR002", "2026-07-10T08:00:00.000Z", defaultConfig, "Kamar Standard Lantai 1"]);
-    sheet.appendRow(["102", "VC", "2026-07-10T08:30:00.000Z", "USR002", "2026-07-10T08:30:00.000Z", defaultConfig, "Kamar Standard Lantai 1"]);
-    sheet.appendRow(["103", "OC", "2026-07-10T08:45:00.000Z", "USR002", "2026-07-10T08:45:00.000Z", defaultConfig, "Kamar Deluxe Lantai 1"]);
-    sheet.appendRow(["104", "OD", "2026-07-10T09:15:00.000Z", "USR003", "2026-07-10T09:15:00.000Z", defaultConfig, "Kamar Deluxe Lantai 1"]);
-    sheet.appendRow(["105", "VD", "", "", "2026-07-10T09:30:00.000Z", defaultConfig, "Kamar Standard Lantai 1"]);
-    sheet.appendRow(["106", "VC", "", "", "2026-07-10T09:45:00.000Z", defaultConfig, "Kamar Standard Lantai 1"]);
-    sheet.appendRow(["107", "DND", "", "", "2026-07-10T10:00:00.000Z", defaultConfig, "Kamar Suite VIP"]);
-    sheet.appendRow(["108", "SR", "", "", "2026-07-10T10:15:00.000Z", defaultConfig, "Kamar Suite VIP"]);
-    sheet.appendRow(["109", "SO", "", "", "2026-07-10T10:30:00.000Z", defaultConfig, "Kamar Standard Lantai 1"]);
-    sheet.appendRow(["110", "NS", "", "", "2026-07-10T10:45:00.000Z", defaultConfig, "Kamar Standard Lantai 1"]);
-    sheet.appendRow(["201", "OD", "2026-07-10T09:00:00.000Z", "USR003", "2026-07-10T09:00:00.000Z", defaultConfig, "Kamar Suite Lantai 2"]);
-    sheet.appendRow(["202", "OOO", "", "", "2026-07-10T09:00:00.000Z", defaultConfig, "AC Rusak dalam perbaikan"]);
-    sheet.appendRow(["203", "VD", "", "", "2026-07-10T09:00:00.000Z", defaultConfig, "Kamar Deluxe Lantai 2"]);
-    sheet.appendRow(["204", "VC", "", "", "2026-07-10T09:00:00.000Z", defaultConfig, "Kamar Deluxe Lantai 2"]);
-    sheet.appendRow(["205", "OOS", "", "", "2026-07-10T09:00:00.000Z", defaultConfig, "Perbaikan plafon retak"]);
+    const defaultInventory = JSON.stringify([
+      { name: "Sabun Mandi", qty: 2, min_qty: 1 },
+      { name: "Sikat Gigi", qty: 2, min_qty: 1 },
+      { name: "Shampoo", qty: 2, min_qty: 1 },
+      { name: "Handuk", qty: 2, min_qty: 2 },
+      { name: "Tisu Toilet", qty: 1, min_qty: 1 }
+    ]);
+    sheet.appendRow(["101", "VD", "2026-07-10T08:00:00.000Z", "USR002", "2026-07-10T08:00:00.000Z", defaultConfig, "Kamar Standard Lantai 1", 30, defaultInventory]);
+    sheet.appendRow(["102", "VC", "2026-07-10T08:30:00.000Z", "USR002", "2026-07-10T08:30:00.000Z", defaultConfig, "Kamar Standard Lantai 1", 30, defaultInventory]);
+    sheet.appendRow(["103", "OC", "2026-07-10T08:45:00.000Z", "USR002", "2026-07-10T08:45:00.000Z", defaultConfig, "Kamar Deluxe Lantai 1", 45, defaultInventory]);
+    sheet.appendRow(["104", "OD", "2026-07-10T09:15:00.000Z", "USR003", "2026-07-10T09:15:00.000Z", defaultConfig, "Kamar Deluxe Lantai 1", 45, defaultInventory]);
+    sheet.appendRow(["105", "VD", "", "", "2026-07-10T09:30:00.000Z", defaultConfig, "Kamar Standard Lantai 1", 30, defaultInventory]);
+    sheet.appendRow(["106", "VC", "", "", "2026-07-10T09:45:00.000Z", defaultConfig, "Kamar Standard Lantai 1", 30, defaultInventory]);
+    sheet.appendRow(["107", "DND", "", "", "2026-07-10T10:00:00.000Z", defaultConfig, "Kamar Suite VIP", 60, defaultInventory]);
+    sheet.appendRow(["108", "SR", "", "", "2026-07-10T10:15:00.000Z", defaultConfig, "Kamar Suite VIP", 60, defaultInventory]);
+    sheet.appendRow(["109", "SO", "", "", "2026-07-10T10:30:00.000Z", defaultConfig, "Kamar Standard Lantai 1", 30, defaultInventory]);
+    sheet.appendRow(["110", "NS", "", "", "2026-07-10T10:45:00.000Z", defaultConfig, "Kamar Standard Lantai 1", 30, defaultInventory]);
+    sheet.appendRow(["201", "OD", "2026-07-10T09:00:00.000Z", "USR003", "2026-07-10T09:00:00.000Z", defaultConfig, "Kamar Suite Lantai 2", 45, defaultInventory]);
+    sheet.appendRow(["202", "OOO", "", "", "2026-07-10T09:00:00.000Z", defaultConfig, "AC Rusak dalam perbaikan", 30, defaultInventory]);
+    sheet.appendRow(["203", "VD", "", "", "2026-07-10T09:00:00.000Z", defaultConfig, "Kamar Deluxe Lantai 2", 30, defaultInventory]);
+    sheet.appendRow(["204", "VC", "", "", "2026-07-10T09:00:00.000Z", defaultConfig, "Kamar Deluxe Lantai 2", 30, defaultInventory]);
+    sheet.appendRow(["205", "OOS", "", "", "2026-07-10T09:00:00.000Z", defaultConfig, "Perbaikan plafon retak", 30, defaultInventory]);
   } 
   else if (name === "tb_room_assignments") {
     sheet.appendRow(["ASGR001", "2026-07-09", "101", "USR002", "VD", "VC", "Pembersihan rutin", "Completed"]);
@@ -492,10 +510,10 @@ function seedSheetData(name) {
     sheet.appendRow(["ASGR006", "2026-07-11", "203", "USR003", "VD", "VC", "Rutin sore", "Pending"]);
   }
   else if (name === "tb_room_status_history") {
-    sheet.appendRow(["HIS001", "101", "VC", "VD", "USR002", "2026-07-09T08:00:00.000Z", 120]);
-    sheet.appendRow(["HIS002", "102", "VD", "VC", "USR003", "2026-07-10T08:30:00.000Z", 20]);
-    sheet.appendRow(["HIS003", "103", "OD", "OC", "USR002", "2026-07-10T08:45:00.000Z", 35]);
-    sheet.appendRow(["HIS004", "104", "VD", "OD", "USR003", "2026-07-10T09:15:00.000Z", 15]);
+    sheet.appendRow(["HIS001", "101", "VC", "VD", "USR002", "2026-07-09T08:00:00.000Z", 120, 30, 0]);
+    sheet.appendRow(["HIS002", "102", "VD", "VC", "USR003", "2026-07-10T08:30:00.000Z", 20, 30, 100]);
+    sheet.appendRow(["HIS003", "103", "OD", "OC", "USR002", "2026-07-10T08:45:00.000Z", 35, 45, 100]);
+    sheet.appendRow(["HIS004", "104", "VD", "OD", "USR003", "2026-07-10T09:15:00.000Z", 15, 45, 100]);
   }
   else if (name === "tb_room_statuses") {
     const statuses = [
@@ -937,6 +955,17 @@ function handleClockInAction(payload) {
     return { success: false, message: "Shift tidak aktif atau tidak ditemukan." };
   }
   
+  const leaves = getSheetData("tb_leave_requests");
+  const hasLeave = leaves.some(row => 
+    row.user_id === userId && 
+    (row.status === "approved" || row.status === "pending") &&
+    date >= String(row.start_date).substring(0, 10) && 
+    date <= String(row.end_date).substring(0, 10)
+  );
+  if (hasLeave) {
+    return { success: false, message: "Clock-In diblokir. Anda memiliki izin/cuti aktif untuk tanggal hari ini." };
+  }
+  
   const attendance = getSheetData("tb_attendance");
   const alreadyIn = attendance.find(row => row.user_id === userId && row.date === date);
   if (alreadyIn) {
@@ -960,7 +989,7 @@ function handleClockInAction(payload) {
     date: date,
     check_in_time: time,
     check_out_time: "",
-    status: "in",
+    status: "pending",
     late_checkout_minutes: 0
   });
   
@@ -992,9 +1021,9 @@ function handleClockOutAction(payload) {
   }
   
   const attData = getSheetData("tb_attendance");
-  const attRecord = attData.find(row => row.user_id === userId && row.date === date && row.status === "in");
+  const attRecord = attData.find(row => row.user_id === userId && row.date === date && row.status === "pending");
   if (!attRecord) {
-    return { success: false, message: "Data Clock-In aktif hari ini tidak ditemukan." };
+    return { success: false, message: "Data Clock-In aktif (pending) hari ini tidak ditemukan." };
   }
   
   const shift = findRowInSheet("tb_shifts", "shift_id", attRecord.shift_id);
@@ -1030,18 +1059,25 @@ function handleClockOutAction(payload) {
     lateMinutes = checkMins - targetMins;
   }
   
+  const checkInMins = timeToMinutes(attRecord.check_in_time);
+  const shiftInMins = timeToMinutes(shift.check_in_time);
+  let finalStatus = "hadir";
+  if (checkInMins > shiftInMins) {
+    finalStatus = "terlambat";
+  }
+  
   updateRowInSheet("tb_attendance", "attendance_id", attRecord.attendance_id, {
     check_out_time: time,
-    status: "out",
+    status: finalStatus,
     late_checkout_minutes: lateMinutes
   });
   
-  let successMsg = "Clock-Out berhasil dicatat pada pukul " + time + ".";
+  let successMsg = "Clock-Out berhasil dicatat pada pukul " + time + ". Status kehadiran: " + finalStatus + ".";
   if (lateMinutes > 0) {
     successMsg += " Keterlambatan absen pulang: " + lateMinutes + " menit.";
   }
   
-  return { success: true, message: successMsg, late_checkout_minutes: lateMinutes };
+  return { success: true, message: successMsg };
 }
 
 /**
@@ -1247,6 +1283,12 @@ function handleUpdateRoomStatusAction(payload) {
   
   const historyId = "HIS" + Utilities.getUuid().substring(0, 8).toUpperCase();
   const duration = calculateLastStatusDuration(roomNumber, nowISO);
+  const ideal_timer = room.ideal_timer_minutes || 30;
+  let historyKpi = 100;
+  if (duration > ideal_timer) {
+    historyKpi = Math.max(0, 100 - ((duration - ideal_timer) / ideal_timer) * 100);
+  }
+  historyKpi = Number(historyKpi.toFixed(2));
   
   appendRowToSheet("tb_room_status_history", {
     history_id: historyId,
@@ -1255,7 +1297,9 @@ function handleUpdateRoomStatusAction(payload) {
     new_status: newStatus,
     changed_by: userId,
     timestamp: nowISO,
-    duration_minutes: duration
+    duration_minutes: duration,
+    ideal_timer_minutes: ideal_timer,
+    kpi_score: historyKpi
   });
   
   return { 
@@ -1390,6 +1434,13 @@ function handleSubmitRoomChecklistAction(payload) {
   
   const historyId = "HIS" + Utilities.getUuid().substring(0, 8).toUpperCase();
   const statusDuration = calculateLastStatusDuration(roomNumber, nowISO);
+  const ideal_timer = room ? (room.ideal_timer_minutes || 30) : 30;
+  let historyKpi = 100;
+  if (statusDuration > ideal_timer) {
+    historyKpi = Math.max(0, 100 - ((statusDuration - ideal_timer) / ideal_timer) * 100);
+  }
+  historyKpi = Number(historyKpi.toFixed(2));
+
   appendRowToSheet("tb_room_status_history", {
     history_id: historyId,
     room_number: roomNumber,
@@ -1397,7 +1448,9 @@ function handleSubmitRoomChecklistAction(payload) {
     new_status: "VC",
     changed_by: staffId,
     timestamp: nowISO,
-    duration_minutes: statusDuration
+    duration_minutes: statusDuration,
+    ideal_timer_minutes: ideal_timer,
+    kpi_score: historyKpi
   });
   
   return { 
@@ -1725,6 +1778,12 @@ function handleUpdateRecord(payload) {
       
       const historyId = "HIS" + Utilities.getUuid().substring(0, 8).toUpperCase();
       const duration = calculateLastStatusDuration(keyValue, nowISO);
+      const ideal_timer = room.ideal_timer_minutes || 30;
+      let kpi_score = 100;
+      if (duration > ideal_timer) {
+        kpi_score = Math.max(0, 100 - ((duration - ideal_timer) / ideal_timer) * 100);
+      }
+      kpi_score = Number(kpi_score.toFixed(2));
       
       // Update last_cleaned_at/by if clean
       if (updates.room_status === "VC" || updates.room_status === "OC") {
@@ -1740,7 +1799,9 @@ function handleUpdateRecord(payload) {
         new_status: updates.room_status,
         changed_by: payload.userId || "system",
         timestamp: nowISO,
-        duration_minutes: duration
+        duration_minutes: duration,
+        ideal_timer_minutes: ideal_timer,
+        kpi_score: kpi_score
       });
     }
   }
@@ -1945,6 +2006,15 @@ function handleGenerateDailyDataAction(payload) {
     const activeStaff = users.filter(u => u.status === "active" && u.role === "staff");
     const attendance = getSheetData("tb_attendance");
     
+    // 1. Process previous days' pending attendances to "alpha"
+    attendance.forEach(a => {
+      if (a.status === "pending" && a.date !== todayStr) {
+        updateRowInSheet("tb_attendance", "attendance_id", a.attendance_id, {
+          status: "alpha"
+        });
+      }
+    });
+
     activeStaff.forEach(staff => {
       const existing = attendance.find(a => a.user_id === staff.user_id && a.date === todayStr);
       if (!existing) {

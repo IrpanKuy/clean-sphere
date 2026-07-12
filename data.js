@@ -8,7 +8,7 @@
 
 // --- CONFIGURATION ---
 // REPLACE THIS URL with your deployed Google Apps Script Web App URL
-var GAS_URL = "https://script.google.com/macros/s/AKfycbwxHMb0ikHvFOBnlNsfEQ-MqeDxVlv3KCHP4bW7K_UbNyMm5lfdVDWC_DQoEd277sZOpA/exec";
+var GAS_URL = "https://script.google.com/macros/s/AKfycbydmCL10jaE3WjRLBBsVPzpECKYnD25zsgyEHMjRhdLbEnmRfcX0eXj5t5QwHE0_niGEQ/exec";
 
 // --- GLOBAL VARIABLES (STATE CONTAINER) ---
 var appState = Vue.reactive({
@@ -414,15 +414,24 @@ async function updateRoomStatusLocal(roomNumber, newStatus, remarks = "") {
 /**
  * Adds a new room to database
  */
-async function addRoomLocal(roomNumber, roomStatus, checklistConfig = "{}", remarks = "") {
+async function addRoomLocal(roomNumber, roomStatus, checklistConfig = "{}", remarks = "", idealTimer = 30) {
     showLoading("Menambahkan kamar baru...");
     try {
+        const defaultInventory = JSON.stringify([
+            { name: "Sabun Mandi", qty: 2, min_qty: 1 },
+            { name: "Sikat Gigi", qty: 2, min_qty: 1 },
+            { name: "Shampoo", qty: 2, min_qty: 1 },
+            { name: "Handuk", qty: 2, min_qty: 2 },
+            { name: "Tisu Toilet", qty: 1, min_qty: 1 }
+        ]);
         const res = await runWithRetry({
             action: "addRoom",
             room_number: roomNumber,
             room_status: roomStatus,
             checklist_config: typeof checklistConfig === "string" ? checklistConfig : JSON.stringify(checklistConfig),
-            remarks: remarks
+            remarks: remarks,
+            ideal_timer_minutes: idealTimer,
+            room_inventory: defaultInventory
         });
         if (res.success) {
             // Local state mutation
@@ -431,6 +440,8 @@ async function addRoomLocal(roomNumber, roomStatus, checklistConfig = "{}", rema
                 room_status: roomStatus,
                 checklist_config: typeof checklistConfig === "string" ? checklistConfig : JSON.stringify(checklistConfig),
                 remarks: remarks,
+                ideal_timer_minutes: idealTimer,
+                room_inventory: defaultInventory,
                 last_cleaned_at: "",
                 last_cleaned_by: "",
                 last_updated: new Date().toISOString()
@@ -466,9 +477,11 @@ async function addRoomLocal(roomNumber, roomStatus, checklistConfig = "{}", rema
 /**
  * Updates room number, status, checklist configuration, and remarks
  */
-async function updateRoomLocal(oldRoomNumber, newRoomNumber, roomStatus, checklistConfig = "{}", remarks = "") {
+async function updateRoomLocal(oldRoomNumber, newRoomNumber, roomStatus, checklistConfig = "{}", remarks = "", idealTimer = 30) {
     showLoading("Menyimpan pembaruan kamar...");
     try {
+        const room = appState.rooms.find(r => String(r.room_number) === String(oldRoomNumber));
+        const currentInventory = room ? (room.room_inventory || "[]") : "[]";
         const res = await runWithRetry({
             action: "updateRoom",
             oldRoomNumber: oldRoomNumber,
@@ -476,6 +489,8 @@ async function updateRoomLocal(oldRoomNumber, newRoomNumber, roomStatus, checkli
             roomStatus: roomStatus,
             checklist_config: typeof checklistConfig === "string" ? checklistConfig : JSON.stringify(checklistConfig),
             remarks: remarks,
+            ideal_timer_minutes: idealTimer,
+            room_inventory: currentInventory,
             userId: appState.currentUser.user_id
         });
         if (res.success) {
@@ -486,6 +501,7 @@ async function updateRoomLocal(oldRoomNumber, newRoomNumber, roomStatus, checkli
                 appState.rooms[idx].room_status = roomStatus;
                 appState.rooms[idx].checklist_config = typeof checklistConfig === "string" ? checklistConfig : JSON.stringify(checklistConfig);
                 appState.rooms[idx].remarks = remarks;
+                appState.rooms[idx].ideal_timer_minutes = idealTimer;
                 appState.rooms[idx].last_updated = new Date().toISOString();
             }
 
@@ -1981,6 +1997,34 @@ async function updateHouseKeepingProjectLocal(projectId, updates) {
             return true;
         } else {
             throw new Error(res.message);
+        }
+    } catch (error) {
+        hideLoading();
+        showToast(`⚠️ Gagal: ${error.message}`, "error");
+        return false;
+    }
+}
+
+async function updateRoomInventoryLocal(roomNumber, roomInventoryData) {
+    showLoading("Menyimpan inventaris kamar...");
+    try {
+        const res = await runWithRetry({
+            action: "updateRoomInventory",
+            room_number: roomNumber,
+            room_inventory: typeof roomInventoryData === "string" ? roomInventoryData : JSON.stringify(roomInventoryData),
+            userId: appState.currentUser ? appState.currentUser.user_id : "system"
+        });
+        if (res.success) {
+            const idx = appState.rooms.findIndex(r => String(r.room_number) === String(roomNumber));
+            if (idx !== -1) {
+                appState.rooms[idx].room_inventory = typeof roomInventoryData === "string" ? roomInventoryData : JSON.stringify(roomInventoryData);
+                appState.rooms[idx].last_updated = new Date().toISOString();
+            }
+            hideLoading();
+            showToast("✅ Inventaris kamar berhasil diperbarui.", "success");
+            return true;
+        } else {
+            throw new Error(res.message || "Gagal memperbarui inventaris.");
         }
     } catch (error) {
         hideLoading();
