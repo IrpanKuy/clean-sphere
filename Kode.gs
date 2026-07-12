@@ -912,9 +912,10 @@ function handleGetAllDataAction() {
  * Utility helper to convert time string HH:mm to minutes from midnight
  */
 function timeToMinutes(timeStr) {
-  const parts = String(timeStr).split(":");
+  const cleanTime = String(timeStr).replace(".", ":");
+  const parts = cleanTime.split(":");
   if (parts.length < 2) return 0;
-  return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+  return parseInt(parts[0], 10) * 60 + (parseInt(parts[1], 10) || 0);
 }
 
 /**
@@ -923,6 +924,7 @@ function timeToMinutes(timeStr) {
 function isCheckInAllowed(shift, checkTimeStr) {
   const checkMins = timeToMinutes(checkTimeStr);
   const targetMins = timeToMinutes(shift.check_in_time);
+  const shiftOutMins = timeToMinutes(shift.check_out_time);
   const preMins = parseInt(shift.pre_check_in_minutes, 10) || 0;
   
   let startMins = targetMins - preMins;
@@ -930,10 +932,10 @@ function isCheckInAllowed(shift, checkTimeStr) {
     startMins += 1440; // Wrap-around
   }
   
-  if (startMins <= targetMins) {
-    return (checkMins >= startMins);
+  if (startMins <= shiftOutMins) {
+    return (checkMins >= startMins && checkMins <= shiftOutMins);
   } else {
-    return (checkMins >= startMins || checkMins <= targetMins);
+    return (checkMins >= startMins || checkMins <= shiftOutMins);
   }
 }
 
@@ -967,33 +969,30 @@ function handleClockInAction(payload) {
   }
   
   const attendance = getSheetData("tb_attendance");
-  const alreadyIn = attendance.find(row => row.user_id === userId && row.date === date);
-  if (alreadyIn) {
+  const existingRecord = attendance.find(row => row.user_id === userId && row.date === date);
+  
+  if (!existingRecord) {
+    return { success: false, message: "Absensi belum dibuat oleh Manager/Admin. Harap hubungi Manager untuk membuat data harian." };
+  }
+  
+  if (existingRecord.check_in_time) {
     return { success: false, message: "Anda sudah melakukan Clock-In untuk hari ini." };
   }
   
   if (!isCheckInAllowed(shift, time)) {
+    const startStr = getFormattedWindowTime(shift.check_in_time, -shift.pre_check_in_minutes);
     return { 
       success: false, 
-      message: "Clock-In belum dibuka. Shift " + shift.shift_name + " (" + shift.check_in_time + ") baru dapat diakses sejak " + 
-               getFormattedWindowTime(shift.check_in_time, -shift.pre_check_in_minutes) + "."
+      message: "Clock-In belum dibuka. Shift " + shift.shift_name + " (" + shift.check_in_time + ") baru dapat diakses sejak " + startStr + "."
     };
   }
   
-  const attId = "ATT" + Utilities.getUuid().substring(0, 8).toUpperCase();
-  
-  appendRowToSheet("tb_attendance", {
-    attendance_id: attId,
-    user_id: userId,
-    shift_id: shiftId,
-    date: date,
+  updateRowInSheet("tb_attendance", "attendance_id", existingRecord.attendance_id, {
     check_in_time: time,
-    check_out_time: "",
-    status: "pending",
-    late_checkout_minutes: 0
+    status: "pending"
   });
   
-  return { success: true, message: "Clock-In berhasil dicatat pada pukul " + time + ".", attendance_id: attId };
+  return { success: true, message: "Clock-In berhasil dicatat pada pukul " + time + ".", attendance_id: existingRecord.attendance_id };
 }
 
 /**
@@ -2006,9 +2005,9 @@ function handleGenerateDailyDataAction(payload) {
     const activeStaff = users.filter(u => u.status === "active" && u.role === "staff");
     const attendance = getSheetData("tb_attendance");
     
-    // 1. Process previous days' pending attendances to "alpha"
+    // 1. Process previous days' pending/belum_absen attendances to "alpha"
     attendance.forEach(a => {
-      if (a.status === "pending" && a.date !== todayStr) {
+      if ((a.status === "pending" || a.status === "belum_absen") && a.date !== todayStr) {
         updateRowInSheet("tb_attendance", "attendance_id", a.attendance_id, {
           status: "alpha"
         });
@@ -2025,7 +2024,7 @@ function handleGenerateDailyDataAction(payload) {
           date: todayStr,
           check_in_time: "",
           check_out_time: "",
-          status: "pending",
+          status: "belum_absen",
           late_checkout_minutes: 0
         });
         stats.attendance++;

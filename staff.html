@@ -138,26 +138,32 @@
             @click="toggleAttendance" 
             :disabled="hasActiveLeaveToday"
             :class="['w-40 h-40 rounded-full flex flex-col items-center justify-center text-white transition-all duration-300 shadow-xl shadow-opacity-40 border-none cursor-pointer', 
-              attendanceStatus === 'Belum Absen' 
-                ? (hasActiveLeaveToday 
-                    ? 'bg-slate-300 shadow-none cursor-not-allowed' 
-                    : (!checkClockInWindow().allowed 
-                        ? 'bg-gradient-to-tr from-amber-500 to-yellow-400 shadow-yellow-500/20 active:scale-95' 
-                        : 'bg-gradient-to-tr from-blue-600 to-primary-royal shadow-blue-500/40 active:scale-95'))
-                : (attendanceStatus === 'Sudah Clock-In (Pending)' 
-                    ? 'bg-gradient-to-tr from-rose-500 to-rose-400 shadow-rose-500/40 active:scale-95' 
-                    : 'bg-slate-300 shadow-none cursor-not-allowed')]">
+              attendanceStatus === 'Absensi Belum Dibuat'
+                ? 'bg-gradient-to-tr from-slate-400 to-slate-500 shadow-slate-500/20 active:scale-95'
+                : (attendanceStatus === 'Belum Absen' 
+                    ? (hasActiveLeaveToday 
+                        ? 'bg-slate-300 shadow-none cursor-not-allowed' 
+                        : (!checkClockInWindow().allowed 
+                            ? 'bg-gradient-to-tr from-amber-500 to-yellow-400 shadow-yellow-500/20 active:scale-95' 
+                            : 'bg-gradient-to-tr from-blue-600 to-primary-royal shadow-blue-500/40 active:scale-95'))
+                    : (attendanceStatus === 'Sudah Clock-In (Pending)' 
+                        ? 'bg-gradient-to-tr from-rose-500 to-rose-400 shadow-rose-500/40 active:scale-95' 
+                        : 'bg-slate-300 shadow-none cursor-not-allowed'))]">
             <svg class="w-10 h-10 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
             </svg>
             <span class="font-bold text-lg">
               {{ 
+                attendanceStatus === 'Absensi Belum Dibuat' ? 'Clock In' :
                 attendanceStatus === 'Belum Absen' ? (hasActiveLeaveToday ? 'Izin Aktif' : 'Clock In') :
                 attendanceStatus === 'Sudah Clock-In (Pending)' ? 'Clock Out' : 'Selesai'
               }}
             </span>
             <span v-if="hasActiveLeaveToday" class="text-[10px] mt-1 font-medium bg-black/20 px-2 py-0.5 rounded-full">
               Izin Hari Ini
+            </span>
+            <span v-else-if="attendanceStatus === 'Absensi Belum Dibuat'" class="text-[10px] mt-1 font-medium bg-black/20 px-2 py-0.5 rounded-full">
+              Belum Dibuat
             </span>
             <span v-else-if="attendanceStatus === 'Belum Absen' && !checkClockInWindow().allowed" class="text-[10px] mt-1 font-medium bg-black/20 px-2 py-0.5 rounded-full">
               Di Luar Jadwal
@@ -771,7 +777,8 @@ createApp({
 
     const attendanceStatus = computed(() => {
       const rec = todayAttendanceRecord.value;
-      if (!rec) return 'Belum Absen';
+      if (!rec) return 'Absensi Belum Dibuat';
+      if (rec.status === 'belum_absen') return 'Belum Absen';
       if (rec.status === 'pending') return 'Sudah Clock-In (Pending)';
       if (rec.status === 'hadir') return 'Sudah Absen (Hadir)';
       if (rec.status === 'terlambat') return 'Sudah Absen (Terlambat)';
@@ -887,6 +894,16 @@ createApp({
       const now = new Date();
       const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Jakarta' });
       
+      if (attendanceStatus.value === 'Absensi Belum Dibuat') {
+        Swal.fire({
+          icon: 'error',
+          title: 'Absensi Belum Dibuat',
+          text: 'Data absensi harian belum di-generate oleh Manager/Admin. Harap hubungi Manager untuk memproses data harian.',
+          confirmButtonColor: '#EF4444'
+        });
+        return;
+      }
+
       if (attendanceStatus.value === 'Belum Absen') {
         if (hasActiveLeaveToday.value) {
           Swal.fire({
