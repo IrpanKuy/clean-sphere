@@ -160,6 +160,36 @@ const StaffManagementView = {
       const sum = dayChecklists.reduce((total, c) => total + (c.kpi_score || 0), 0);
       return Math.round(sum / dayChecklists.length);
     },
+    getEmployeeOverallKpi(userId) {
+      const kpis = [];
+      const checklists = (this.roomChecklist || appState.room_checklist || []).filter(c => c.staff_id === userId);
+      checklists.forEach(c => {
+        if (c.kpi_score !== undefined && c.kpi_score !== null && c.kpi_score !== '') {
+          kpis.push(Number(c.kpi_score));
+        }
+      });
+      const history = (appState.room_status_history || []).filter(h => h.changed_by === userId);
+      history.forEach(h => {
+        if (h.kpi_score !== undefined && h.kpi_score !== null && h.kpi_score !== '') {
+          kpis.push(Number(h.kpi_score));
+        }
+      });
+      const hkSubs = (appState.housekeeping_submissions || []).filter(s => s.staff_id === userId);
+      hkSubs.forEach(s => {
+        if (s.kpi_score !== undefined && s.kpi_score !== null && s.kpi_score !== '') {
+          kpis.push(Number(s.kpi_score));
+        }
+      });
+      const atts = (this.attendance || appState.attendance || []).filter(a => a.user_id === userId);
+      atts.forEach(a => {
+        if (a.kpi_score !== undefined && a.kpi_score !== null && a.kpi_score !== '') {
+          kpis.push(Number(a.kpi_score));
+        }
+      });
+      if (kpis.length === 0) return '-';
+      const sum = kpis.reduce((total, val) => total + val, 0);
+      return Math.round(sum / kpis.length);
+    },
 
     // User actions
     openAddUser() {
@@ -254,7 +284,8 @@ const StaffManagementView = {
                 <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap first:rounded-tl-lg">Nama Lengkap</th>
                 <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Username</th>
                 <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Role</th>
-                <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Shift Default</th>
+                 <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Shift Default</th>
+                <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap text-center">Rata-rata KPI</th>
                 <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap text-center">Status</th>
                 <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap text-center last:rounded-tr-lg w-[100px]">Aksi</th>
               </tr>
@@ -270,6 +301,12 @@ const StaffManagementView = {
                 </td>
                 <td class="py-3.5 px-4 align-middle">{{ getShiftName(u.shift_id) }}</td>
                 <td class="py-3.5 px-4 align-middle text-center">
+                  <span class="inline-flex items-center justify-center px-2.5 py-1 rounded-md text-[12px] font-bold tracking-wider border bg-indigo-50 text-indigo-700 border-indigo-200" v-if="getEmployeeOverallKpi(u.user_id) !== '-'">
+                    {{ getEmployeeOverallKpi(u.user_id) }} / 100
+                  </span>
+                  <span v-else class="text-slate-400 font-medium">-</span>
+                </td>
+                <td class="py-3.5 px-4 align-middle text-center">
                   <span :class="['inline-flex items-center justify-center px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider border', u.status === 'active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200']">
                     {{ u.status === 'active' ? 'Aktif' : 'Nonaktif' }}
                   </span>
@@ -281,7 +318,7 @@ const StaffManagementView = {
                 </td>
               </tr>
               <tr v-if="filteredUsers.length === 0">
-                <td colspan="6" class="py-12 px-4 text-center text-slate-400 text-sm font-medium bg-slate-50/30">Tidak ada data karyawan tercatat.</td>
+                <td colspan="7" class="py-12 px-4 text-center text-slate-400 text-sm font-medium bg-slate-50/30">Tidak ada data karyawan tercatat.</td>
               </tr>
             </tbody>
           </table>
@@ -377,7 +414,7 @@ const StaffManagementView = {
           </button>
         </div>
 
-        <div class="bg-white rounded-2xl shadow-[0_10px_25px_-5px_rgba(15,23,42,0.04)] border border-slate-100 flex flex-col w-full max-w-[900px] mx-auto overflow-hidden">
+        <div class="bg-white rounded-2xl shadow-[0_10px_25px_-5px_rgba(15,23,42,0.04)] border border-slate-100 flex flex-col w-full overflow-hidden">
           <div class="overflow-x-auto w-full custom-scrollbar">
             <table class="w-full min-w-[700px] border-collapse text-left">
             <thead>
@@ -451,7 +488,7 @@ const StaffManagementView = {
                 <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap text-center">Absen Masuk</th>
                 <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap text-center">Absen Pulang</th>
                 <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap text-center">Status Absensi</th>
-                <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap text-center last:rounded-tr-lg">Rata-rata KPI Hari Ini</th>
+                 <th class="py-3.5 px-4 bg-slate-50 border-b-2 border-slate-100 text-[11.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap text-center last:rounded-tr-lg">KPI Absensi</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
@@ -467,8 +504,8 @@ const StaffManagementView = {
                   </span>
                 </td>
                 <td class="py-3.5 px-4 align-middle text-center">
-                  <span class="inline-flex items-center justify-center px-2.5 py-1 rounded-md text-[12px] font-bold tracking-wider border bg-amber-50 text-amber-700 border-amber-200" v-if="getStaffKpiScore(a.user_id, a.date) !== '-'">
-                    {{ getStaffKpiScore(a.user_id, a.date) }} / 100
+                  <span class="inline-flex items-center justify-center px-2.5 py-1 rounded-md text-[12px] font-bold tracking-wider border bg-amber-50 text-amber-700 border-amber-200" v-if="a.kpi_score !== undefined && a.kpi_score !== null && a.kpi_score !== ''">
+                    {{ a.kpi_score }} / 100
                   </span>
                   <span v-else class="text-slate-400 font-medium">-</span>
                 </td>

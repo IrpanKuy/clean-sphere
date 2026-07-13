@@ -8,7 +8,7 @@
 
 // --- CONFIGURATION ---
 // REPLACE THIS URL with your deployed Google Apps Script Web App URL
-var GAS_URL = "https://script.google.com/macros/s/AKfycbwKKqj63oQtWx9-wt8WxpV7js8vlsXFinKO5H3VxSw2TCGgmpeHcwxI59vDbEfr8sJT5Q/exec";
+var GAS_URL = "https://script.google.com/macros/s/AKfycbxANyxlx-1yN9PebT_U6KGffzbbQJN-oI90jWoueOm9Y8UTBAe16gUaVDPLZA_QNsnR5g/exec";
 
 // --- GLOBAL VARIABLES (STATE CONTAINER) ---
 var appState = Vue.reactive({
@@ -214,7 +214,8 @@ async function fetchDataFromServer(skipSwal = false) {
         showToast("⏳ Sinkronisasi data basis data...", "pending");
     }
     try {
-        const res = await runWithRetry({ action: "getAllData" });
+        const weeks = localStorage.getItem("cs_sync_weeks") || "all";
+        const res = await runWithRetry({ action: "getAllData", weeks: weeks });
         if (res.success) {
             // Populate state tables
             Object.keys(res).forEach(key => {
@@ -725,7 +726,14 @@ async function submitPublicAreaChecklistLocal(areaName, dateStr, status, notes =
 
         if (res.success) {
             showToast("✅ Checklist area disimpan.", "success");
-            await fetchDataFromServer();
+            appState.public_area_checklist.push({
+                area_name: areaName,
+                staff_id: appState.currentUser.user_id,
+                date: dateStr,
+                status: status,
+                notes: notes,
+                timestamp: new Date().toISOString()
+            });
             return true;
         } else {
             showToast(`⚠️ Gagal: ${res.message}`, "error");
@@ -740,7 +748,7 @@ async function submitPublicAreaChecklistLocal(areaName, dateStr, status, notes =
 /**
  * Securely writes inventory transactions to backend ledger
  */
-async function recordInventoryTxLocal(itemId, type, qty, dateStr, remarks = "", detailSpesifik = null) {
+async function recordInventoryTxLocal(itemId, type, qty, dateStr, remarks = "", detailSpesifik = null, locationRoom = "Global") {
     showToast("⏳ Mengirim transaksi barang...", "pending");
     try {
         const payload = {
@@ -749,21 +757,20 @@ async function recordInventoryTxLocal(itemId, type, qty, dateStr, remarks = "", 
             userId: appState.currentUser.user_id,
             type: type,
             quantity: qty,
+            locationRoom: locationRoom,
             date: dateStr,
             remarks: remarks
         };
-        
-        // If detail_spesifik provided, include it for backend to update the item's dynamic attributes
+
         if (detailSpesifik) {
-            payload.detail_spesifik = typeof detailSpesifik === 'string' 
-                ? detailSpesifik 
+            payload.detail_spesifik = typeof detailSpesifik === 'string'
+                ? detailSpesifik
                 : JSON.stringify(detailSpesifik);
         }
-        
+
         const res = await runWithRetry(payload);
 
         if (res.success) {
-            // Optimistic local update: update stock_current on the item
             const idx = appState.inventory.findIndex(i => i.item_id === itemId);
             if (idx !== -1 && res.stock_current !== undefined) {
                 appState.inventory[idx].stock_current = res.stock_current;
@@ -772,13 +779,24 @@ async function recordInventoryTxLocal(itemId, type, qty, dateStr, remarks = "", 
                 } else if (type === 'out') {
                     appState.inventory[idx].stock_out = (parseInt(appState.inventory[idx].stock_out) || 0) + parseInt(qty);
                 }
-                // Update detail_spesifik locally if provided
                 if (detailSpesifik) {
-                    appState.inventory[idx].detail_spesifik = typeof detailSpesifik === 'string' 
-                        ? detailSpesifik 
+                    appState.inventory[idx].detail_spesifik = typeof detailSpesifik === 'string'
+                        ? detailSpesifik
                         : JSON.stringify(detailSpesifik);
                 }
             }
+            appState.inventory_transactions.push({
+                transaction_id: res.transaction_id || ("TXN" + Math.random().toString(36).substring(2, 10).toUpperCase()),
+                item_id: itemId,
+                user_id: appState.currentUser.user_id,
+                type: type,
+                quantity: parseInt(qty),
+                location_room: locationRoom,
+                date: dateStr,
+                remarks: remarks,
+                detail_spesifik: typeof detailSpesifik === 'string' ? detailSpesifik : JSON.stringify(detailSpesifik || {}),
+                timestamp: new Date().toISOString()
+            });
             showToast("✅ Transaksi inventaris berhasil dicatat.", "success");
             return true;
         } else {
@@ -815,7 +833,17 @@ async function submitLeaveRequestLocal(leaveType, startDateStr, endDateStr, reas
         const res = await runWithRetry(payload);
         if (res.success) {
             showToast("✅ Permohonan izin terkirim.", "success");
-            await fetchDataFromServer();
+            appState.leave_requests.push({
+                request_id: res.request_id || ("LVE" + Math.random().toString(36).substring(2, 10).toUpperCase()),
+                user_id: appState.currentUser.user_id,
+                leave_type: leaveType,
+                start_date: startDateStr,
+                end_date: endDateStr,
+                reason: reason,
+                status: "Pending",
+                evidence_url: res.evidence_url || "",
+                created_at: new Date().toISOString()
+            });
             return true;
         } else {
             showToast(`⚠️ Pengajuan Gagal: ${res.message}`, "error");
@@ -851,7 +879,17 @@ async function submitProjectReportLocal(title, description, type, dateStr, image
         const res = await runWithRetry(payload);
         if (res.success) {
             showToast("✅ Laporan proyek berhasil dikirim.", "success");
-            await fetchDataFromServer();
+            appState.projects.push({
+                project_id: res.project_id || ("PRJ" + Math.random().toString(36).substring(2, 10).toUpperCase()),
+                title: title,
+                description: description,
+                type: type,
+                staff_id: appState.currentUser.user_id,
+                date: dateStr,
+                status: "Pending",
+                photo_url: res.photo_url || "",
+                timestamp: new Date().toISOString()
+            });
             return true;
         } else {
             showToast(`⚠️ Pengiriman Gagal: ${res.message}`, "error");
@@ -876,7 +914,10 @@ async function approveLeaveLocal(requestId, status) {
         });
         if (res.success) {
             showToast(`✅ Permohonan izin ${status === "approved" ? "disetujui" : "ditolak"}.`, "success");
-            await fetchDataFromServer();
+            const req = appState.leave_requests.find(r => r.request_id === requestId);
+            if (req) {
+                req.status = status;
+            }
             return true;
         }
         throw new Error(res.message);
@@ -897,7 +938,10 @@ async function approveProjectLocal(projectId, status) {
         });
         if (res.success) {
             showToast(`✅ Laporan projek telah ${status === "Approved" ? "disetujui" : "ditolak"}.`, "success");
-            await fetchDataFromServer();
+            const proj = appState.projects.find(p => p.project_id === projectId);
+            if (proj) {
+                proj.status = status;
+            }
             return true;
         }
         throw new Error(res.message);
@@ -920,7 +964,7 @@ async function approveOvertimeLocal(attendanceId, status) {
 /**
  * Submits daily area tasks
  */
-async function submitAreaTaskDailyLocal(areaId, areaShiftId, dateStr, status, remarks = "") {
+async function submitAreaTaskDailyLocal(areaId, areaShiftId, dateStr, status, remarks = "", tasksCompleted = {}, linenChanged = [], refills = []) {
     showLoading("Menyinkronkan laporan area...");
     try {
         const res = await runWithRetry({
@@ -930,11 +974,44 @@ async function submitAreaTaskDailyLocal(areaId, areaShiftId, dateStr, status, re
             staffId: appState.currentUser.user_id,
             date: dateStr,
             status: status,
-            remarks: remarks
+            remarks: remarks,
+            tasksCompleted: tasksCompleted,
+            linenChanged: linenChanged,
+            refills: refills
         });
 
         if (res.success) {
-            await fetchDataFromServer();
+            const idx = appState.area_tasks_daily.findIndex(x => x.area_shift_id === areaShiftId && x.date === dateStr);
+            const recordObj = {
+                task_daily_id: res.task_daily_id || ("ATD" + Math.random().toString(36).substring(2, 10).toUpperCase()),
+                area_id: areaId,
+                area_shift_id: areaShiftId,
+                staff_id: appState.currentUser.user_id,
+                date: dateStr,
+                status: status,
+                remarks: remarks,
+                timestamp: new Date().toISOString(),
+                tasks_completed: typeof tasksCompleted === 'string' ? tasksCompleted : JSON.stringify(tasksCompleted),
+                linen_changed: typeof linenChanged === 'string' ? linenChanged : JSON.stringify(linenChanged),
+                refills: typeof refills === 'string' ? refills : JSON.stringify(refills)
+            };
+            if (idx !== -1) {
+                appState.area_tasks_daily[idx] = recordObj;
+            } else {
+                appState.area_tasks_daily.push(recordObj);
+            }
+
+            // Update local assignment status
+            const taskAssign = appState.staff_area_tasks.find(t =>
+                t.area_id === areaId &&
+                t.area_shift_id === areaShiftId &&
+                t.staff_id === appState.currentUser.user_id &&
+                t.date === dateStr
+            );
+            if (taskAssign) {
+                taskAssign.status = "selesai";
+            }
+
             hideLoading();
             if (typeof Swal !== "undefined") {
                 Swal.fire({
@@ -1442,7 +1519,7 @@ async function updateRoomChecklistLocal(checklistId, tasksCompleted, linenChange
 /**
  * Adds a new inventory item
  */
-async function addInventoryItemLocal(itemCode, categoryId, itemName, stockInitial, minStock, remarks = "", detailSpesifik = "{}") {
+async function addInventoryItemLocal(itemCode, categoryId, itemName, locationRoom = "Global", stockInitial = 0, minStock = 5, remarks = "", detailSpesifik = "{}") {
     showLoading("Menambahkan barang inventaris...");
     try {
         const itemId = "INV" + Math.random().toString(36).substring(2, 10).toUpperCase();
@@ -1453,6 +1530,7 @@ async function addInventoryItemLocal(itemCode, categoryId, itemName, stockInitia
             item_code: itemCode,
             category_id: categoryId,
             item_name: itemName,
+            location_room: locationRoom,
             stock_initial: Number(stockInitial) || 0,
             min_stock: Number(minStock) || 5,
             detail_spesifik: detailStr,
@@ -1464,6 +1542,7 @@ async function addInventoryItemLocal(itemCode, categoryId, itemName, stockInitia
                 item_code: itemCode,
                 category_id: categoryId,
                 item_name: itemName,
+                location_room: locationRoom,
                 stock_initial: Number(stockInitial) || 0,
                 stock_in: 0,
                 stock_out: 0,
@@ -1502,7 +1581,7 @@ async function addInventoryItemLocal(itemCode, categoryId, itemName, stockInitia
 /**
  * Updates an inventory item
  */
-async function updateInventoryItemLocal(itemId, itemCode, categoryId, itemName, minStock, remarks = "", detailSpesifik = "{}") {
+async function updateInventoryItemLocal(itemId, itemCode, categoryId, itemName, locationRoom, minStock, remarks = "", detailSpesifik = "{}") {
     showLoading("Menyimpan pembaruan barang...");
     try {
         const detailStr = typeof detailSpesifik === 'string' ? detailSpesifik : JSON.stringify(detailSpesifik);
@@ -1515,6 +1594,7 @@ async function updateInventoryItemLocal(itemId, itemCode, categoryId, itemName, 
                 item_code: itemCode,
                 category_id: categoryId,
                 item_name: itemName,
+                location_room: locationRoom,
                 min_stock: Number(minStock) || 5,
                 detail_spesifik: detailStr,
                 remarks: remarks
@@ -1526,6 +1606,7 @@ async function updateInventoryItemLocal(itemId, itemCode, categoryId, itemName, 
                 appState.inventory[idx].item_code = itemCode;
                 appState.inventory[idx].category_id = categoryId;
                 appState.inventory[idx].item_name = itemName;
+                appState.inventory[idx].location_room = locationRoom;
                 appState.inventory[idx].min_stock = Number(minStock) || 5;
                 appState.inventory[idx].detail_spesifik = detailStr;
                 appState.inventory[idx].remarks = remarks;
@@ -2039,7 +2120,12 @@ async function addHouseKeepingMasterLocal(title, description, periodType, staffI
         if (res.success) {
             hideLoading();
             showToast("✅ Master proyek berhasil ditambahkan.", "success");
-            await fetchDataFromServer();
+            if (res.updated_masters) {
+                appState.housekeeping_project_master = res.updated_masters;
+            }
+            if (res.updated_projects) {
+                appState.housekeeping_projects = res.updated_projects;
+            }
             return true;
         } else {
             throw new Error(res.message);
@@ -2064,7 +2150,12 @@ async function updateHouseKeepingMasterLocal(masterId, updates) {
         if (res.success) {
             hideLoading();
             showToast("✅ Master proyek berhasil diperbarui.", "success");
-            await fetchDataFromServer();
+            if (res.updated_masters) {
+                appState.housekeeping_project_master = res.updated_masters;
+            }
+            if (res.updated_projects) {
+                appState.housekeeping_projects = res.updated_projects;
+            }
             return true;
         } else {
             throw new Error(res.message);
@@ -2089,7 +2180,10 @@ async function updateHouseKeepingProjectLocal(projectId, updates) {
         if (res.success) {
             hideLoading();
             showToast("✅ Proyek berhasil diupdate.", "success");
-            await fetchDataFromServer();
+            const idx = appState.housekeeping_projects.findIndex(p => p.project_id === projectId);
+            if (idx !== -1) {
+                Object.assign(appState.housekeeping_projects[idx], updates);
+            }
             return true;
         } else {
             throw new Error(res.message);
@@ -2160,7 +2254,22 @@ async function submitHousekeepingSubmissionLocal(projectId, description, photoFi
             } else {
                 showToast("✅ Laporan housekeeping berhasil diajukan.", "success");
             }
-            await fetchDataFromServer();
+            appState.housekeeping_submissions.push({
+                submission_id: res.submission_id,
+                project_id: projectId,
+                staff_id: appState.currentUser.user_id,
+                description: description,
+                photo_url: res.photo_url || "",
+                submitted_at: payload.submittedAt,
+                status: "Pending",
+                kpi_score: res.kpi_score || "",
+                approved_by: "",
+                approved_at: ""
+            });
+            const pIdx = appState.housekeeping_projects.findIndex(p => p.project_id === projectId);
+            if (pIdx !== -1) {
+                appState.housekeeping_projects[pIdx].status = "Done";
+            }
             return true;
         }
         throw new Error(res.message);
@@ -2187,7 +2296,12 @@ async function approveHousekeepingSubmissionLocal(submissionId, status) {
         if (res.success) {
             hideLoading();
             showToast(`✅ Laporan berhasil ${status === "Approved" ? "disetujui" : "ditolak"}.`, "success");
-            await fetchDataFromServer();
+            if (res.updated_submissions) {
+                appState.housekeeping_submissions = res.updated_submissions;
+            }
+            if (res.updated_projects) {
+                appState.housekeeping_projects = res.updated_projects;
+            }
             return true;
         }
         throw new Error(res.message);
@@ -2196,4 +2310,389 @@ async function approveHousekeepingSubmissionLocal(submissionId, status) {
         showToast(`⚠️ Gagal: ${error.message}`, "error");
         return false;
     }
+}
+
+// =========================================================================
+// PUBLIC AREA CONTROL SHEET APIS
+// =========================================================================
+
+async function addAreaLocal(areaName, idNumber, shiftIds, checklistConfig) {
+    showLoading("Menambahkan area baru...");
+    try {
+        const areaId = "AR" + Math.random().toString(36).substring(2, 10).toUpperCase();
+        const res = await runWithRetry({
+            action: "createRecord",
+            sheetName: "tb_areas",
+            record: {
+                area_id: areaId,
+                area_name: areaName,
+                id_number: idNumber,
+                shift_ids: shiftIds.join(','),
+                checklist_config: typeof checklistConfig === 'string' ? checklistConfig : JSON.stringify(checklistConfig)
+            }
+        });
+        if (res.success) {
+            appState.areas.push({
+                area_id: areaId,
+                area_name: areaName,
+                id_number: idNumber,
+                shift_ids: shiftIds.join(','),
+                checklist_config: typeof checklistConfig === 'string' ? checklistConfig : JSON.stringify(checklistConfig)
+            });
+            hideLoading();
+            showToast("✅ Area baru berhasil ditambahkan.", "success");
+            return true;
+        }
+        throw new Error(res.message);
+    } catch (error) {
+        hideLoading();
+        showToast(`⚠️ Gagal: ${error.message}`, "error");
+        return false;
+    }
+}
+
+async function updateAreaLocal(areaId, areaName, idNumber, shiftIds, checklistConfig) {
+    showLoading("Memperbarui area...");
+    try {
+        const res = await runWithRetry({
+            action: "updateRecord",
+            sheetName: "tb_areas",
+            keyCol: "area_id",
+            keyValue: areaId,
+            updates: {
+                area_name: areaName,
+                id_number: idNumber,
+                shift_ids: shiftIds.join(','),
+                checklist_config: typeof checklistConfig === 'string' ? checklistConfig : JSON.stringify(checklistConfig)
+            }
+        });
+        if (res.success) {
+            const idx = appState.areas.findIndex(a => a.area_id === areaId);
+            if (idx !== -1) {
+                appState.areas[idx].area_name = areaName;
+                appState.areas[idx].id_number = idNumber;
+                appState.areas[idx].shift_ids = shiftIds.join(',');
+                appState.areas[idx].checklist_config = typeof checklistConfig === 'string' ? checklistConfig : JSON.stringify(checklistConfig);
+            }
+            hideLoading();
+            showToast("✅ Area berhasil diperbarui.", "success");
+            return true;
+        }
+        throw new Error(res.message);
+    } catch (error) {
+        hideLoading();
+        showToast(`⚠️ Gagal: ${error.message}`, "error");
+        return false;
+    }
+}
+
+async function deleteAreaLocal(areaId) {
+    showLoading("Menghapus area...");
+    try {
+        const res = await runWithRetry({
+            action: "deleteRecord",
+            sheetName: "tb_areas",
+            keyCol: "area_id",
+            keyValue: areaId
+        });
+        if (res.success) {
+            appState.areas = appState.areas.filter(a => a.area_id !== areaId);
+            hideLoading();
+            showToast("✅ Area berhasil dihapus.", "success");
+            return true;
+        }
+        throw new Error(res.message);
+    } catch (error) {
+        hideLoading();
+        showToast(`⚠️ Gagal: ${error.message}`, "error");
+        return false;
+    }
+}
+
+async function addAreaShiftLocal(shiftName, startTime, endTime) {
+    showLoading("Menambahkan shift...");
+    try {
+        const shiftId = "ASH" + Math.random().toString(36).substring(2, 10).toUpperCase();
+        const res = await runWithRetry({
+            action: "createRecord",
+            sheetName: "tb_area_shifts",
+            record: {
+                area_shift_id: shiftId,
+                shift_name: shiftName,
+                start_time: startTime,
+                end_time: endTime
+            }
+        });
+        if (res.success) {
+            appState.area_shifts.push({
+                area_shift_id: shiftId,
+                shift_name: shiftName,
+                start_time: startTime,
+                end_time: endTime
+            });
+            hideLoading();
+            showToast("✅ Shift area berhasil ditambahkan.", "success");
+            return true;
+        }
+        throw new Error(res.message);
+    } catch (error) {
+        hideLoading();
+        showToast(`⚠️ Gagal: ${error.message}`, "error");
+        return false;
+    }
+}
+
+async function updateAreaShiftLocal(areaShiftId, shiftName, startTime, endTime) {
+    showLoading("Memperbarui shift...");
+    try {
+        const res = await runWithRetry({
+            action: "updateRecord",
+            sheetName: "tb_area_shifts",
+            keyCol: "area_shift_id",
+            keyValue: areaShiftId,
+            updates: {
+                shift_name: shiftName,
+                start_time: startTime,
+                end_time: endTime
+            }
+        });
+        if (res.success) {
+            const idx = appState.area_shifts.findIndex(s => s.area_shift_id === areaShiftId);
+            if (idx !== -1) {
+                appState.area_shifts[idx].shift_name = shiftName;
+                appState.area_shifts[idx].start_time = startTime;
+                appState.area_shifts[idx].end_time = endTime;
+            }
+            hideLoading();
+            showToast("✅ Shift area berhasil diperbarui.", "success");
+            return true;
+        }
+        throw new Error(res.message);
+    } catch (error) {
+        hideLoading();
+        showToast(`⚠️ Gagal: ${error.message}`, "error");
+        return false;
+    }
+}
+
+async function deleteAreaShiftLocal(areaShiftId) {
+    showLoading("Menghapus shift...");
+    try {
+        const res = await runWithRetry({
+            action: "deleteRecord",
+            sheetName: "tb_area_shifts",
+            keyCol: "area_shift_id",
+            keyValue: areaShiftId
+        });
+        if (res.success) {
+            appState.area_shifts = appState.area_shifts.filter(s => s.area_shift_id !== areaShiftId);
+            hideLoading();
+            showToast("✅ Shift area berhasil dihapus.", "success");
+            return true;
+        }
+        throw new Error(res.message);
+    } catch (error) {
+        hideLoading();
+        showToast(`⚠️ Gagal: ${error.message}`, "error");
+        return false;
+    }
+}
+
+async function assignStaffAreaLocal(areaId, shiftIds, staffIds) {
+    showLoading("Menyimpan penugasan staf area...");
+    try {
+        const res = await runWithRetry({
+            action: "updateStaffAreaAssignments",
+            areaId: areaId,
+            shiftIds: shiftIds,
+            staffIds: staffIds
+        });
+        if (res.success) {
+            if (res.updated_assignments) {
+                appState.staff_area_tasks = res.updated_assignments;
+            }
+            hideLoading();
+            showToast("✅ Penugasan staf area berhasil disimpan.", "success");
+            return true;
+        }
+        throw new Error(res.message);
+    } catch (error) {
+        hideLoading();
+        showToast(`⚠️ Gagal: ${error.message}`, "error");
+        return false;
+    }
+}
+
+async function deleteAssignmentLocal(taskId) {
+    showLoading("Menghapus penugasan...");
+    try {
+        const res = await runWithRetry({
+            action: "deleteRecord",
+            sheetName: "tb_staff_area_tasks",
+            keyCol: "task_id",
+            keyValue: taskId
+        });
+        if (res.success) {
+            appState.staff_area_tasks = appState.staff_area_tasks.filter(t => t.task_id !== taskId);
+            hideLoading();
+            showToast("✅ Penugasan berhasil dihapus.", "success");
+            return true;
+        }
+        throw new Error(res.message);
+    } catch (error) {
+        hideLoading();
+        showToast(`⚠️ Gagal: ${error.message}`, "error");
+        return false;
+    }
+}
+
+// =========================================================================
+// CHATBOT DATABASE UTILITIES
+// =========================================================================
+
+async function executeGenericCUDLocal(action, sheetName, keyCol, keyValue, recordOrUpdates) {
+    showLoading("Menjalankan perubahan data...");
+    try {
+        const payload = {
+            action: action === 'create' ? 'createRecord' : action === 'update' ? 'updateRecord' : 'deleteRecord',
+            sheetName: sheetName
+        };
+        if (action === 'create') {
+            payload.record = recordOrUpdates;
+        } else if (action === 'update') {
+            payload.keyCol = keyCol;
+            payload.keyValue = keyValue;
+            payload.updates = recordOrUpdates;
+        } else {
+            payload.keyCol = keyCol;
+            payload.keyValue = keyValue;
+        }
+
+        const res = await runWithRetry(payload);
+        if (res.success) {
+            // Update local appState dynamically!
+            const stateKey = sheetName.replace("tb_", "");
+            let localArray = appState[stateKey];
+            if (!localArray) {
+                // Fallback mapping: e.g. tb_users -> appState.users, etc.
+                if (sheetName === 'tb_users') localArray = appState.users;
+                else if (sheetName === 'tb_room_checklist') localArray = appState.room_checklist;
+                else if (sheetName === 'tb_room_assignments') localArray = appState.room_assignments;
+                else if (sheetName === 'tb_area_tasks_daily') localArray = appState.area_tasks_daily;
+                else if (sheetName === 'tb_staff_area_tasks') localArray = appState.staff_area_tasks;
+                else if (sheetName === 'tb_housekeeping_project_master') localArray = appState.housekeeping_project_master;
+                else if (sheetName === 'tb_housekeeping_projects') localArray = appState.housekeeping_projects;
+                else if (sheetName === 'tb_inventory_categories') localArray = appState.inventory_categories;
+                else if (sheetName === 'tb_inventory') localArray = appState.inventory;
+            }
+
+            if (localArray) {
+                if (action === 'create') {
+                    // Check for unique key duplication
+                    const uniqueKey = keyCol || Object.keys(recordOrUpdates)[0];
+                    const idx = localArray.findIndex(x => String(x[uniqueKey]) === String(recordOrUpdates[uniqueKey]));
+                    if (idx === -1) {
+                        localArray.push(recordOrUpdates);
+                    } else {
+                        Object.assign(localArray[idx], recordOrUpdates);
+                    }
+                } else if (action === 'update') {
+                    const idx = localArray.findIndex(x => String(x[keyCol]) === String(keyValue));
+                    if (idx !== -1) {
+                        Object.assign(localArray[idx], recordOrUpdates);
+                    }
+                } else if (action === 'delete') {
+                    const filtered = localArray.filter(x => String(x[keyCol]) !== String(keyValue));
+                    const stateProp = Object.keys(appState).find(k => appState[k] === localArray);
+                    if (stateProp) {
+                        appState[stateProp] = filtered;
+                    }
+                }
+            }
+            hideLoading();
+            return { success: true, message: res.message || "Berhasil." };
+        }
+        throw new Error(res.message);
+    } catch (error) {
+        hideLoading();
+        return { success: false, message: error.message };
+    }
+}
+
+function getCurrentStateContext() {
+    const context = {
+        tables: {
+            tb_users: {
+                description: "Daftar karyawan dan manager",
+                columns: ["user_id", "username", "name", "role", "shift_id", "status"],
+                data: appState.users
+            },
+            tb_shifts: {
+                description: "Shift kerja karyawan",
+                columns: ["shift_id", "shift_name", "check_in_time", "check_out_time", "pre_check_in_minutes", "pre_check_out_minutes", "is_active"],
+                data: appState.shifts
+            },
+            tb_rooms: {
+                description: "Daftar kamar rumah sakit",
+                columns: ["room_number", "room_status", "last_cleaned_at", "last_cleaned_by", "last_updated", "checklist_config", "remarks", "ideal_timer_minutes", "room_inventory"],
+                data: appState.rooms
+            },
+            tb_areas: {
+                description: "Daftar public area",
+                columns: ["area_id", "area_name", "id_number", "shift_ids", "checklist_config"],
+                data: appState.areas
+            },
+            tb_area_shifts: {
+                description: "Shift kerja public area",
+                columns: ["area_shift_id", "shift_name", "start_time", "end_time"],
+                data: appState.area_shifts
+            },
+            tb_staff_area_tasks: {
+                description: "Penugasan staf ke public area",
+                columns: ["task_id", "area_id", "area_shift_id", "staff_id", "date", "status"],
+                data: appState.staff_area_tasks
+            },
+            tb_area_tasks_daily: {
+                description: "Tugas harian public area harian (hanya 5 data terakhir)",
+                columns: ["task_daily_id", "area_id", "area_shift_id", "staff_id", "date", "status", "remarks", "updated_by", "updated_at", "tasks_completed", "linen_changed", "refills"],
+                data: (appState.area_tasks_daily || []).slice(-5)
+            },
+            tb_inventory_categories: {
+                description: "Kategori barang inventaris",
+                columns: ["category_id", "category_name", "description", "default_attributes", "is_active"],
+                data: appState.inventory_categories
+            },
+            tb_inventory: {
+                description: "Stok barang inventaris global dan kamar",
+                columns: ["item_id", "item_code", "category_id", "item_name", "location_room", "stock_initial", "stock_in", "stock_out", "stock_current", "min_stock", "detail_spesifik", "remarks"],
+                data: appState.inventory
+            },
+            tb_room_assignments: {
+                description: "Penugasan pembersihan kamar untuk staf (hanya 5 data terakhir)",
+                columns: ["assignment_id", "date", "room_number", "staff_id", "target_status_from", "target_status_to", "remarks", "status"],
+                data: (appState.room_assignments || []).slice(-5)
+            },
+            tb_room_checklist: {
+                description: "Log checklist pembersihan kamar (hanya 5 data terakhir)",
+                columns: ["checklist_id", "room_number", "staff_id", "date", "start_time", "end_time", "duration_minutes", "tasks_completed", "linen_changed", "refills", "status", "kpi_score"],
+                data: (appState.room_checklist || []).slice(-5)
+            },
+            tb_housekeeping_project_master: {
+                description: "Master proyek/tugas housekeeping",
+                columns: ["master_id", "title", "description", "period_type", "staff_ids", "start_date", "last_generated_date", "ideal_time", "is_active"],
+                data: appState.housekeeping_project_master
+            },
+            tb_housekeeping_projects: {
+                description: "Instansi tugas/proyek housekeeping (hanya 5 data terakhir)",
+                columns: ["project_id", "master_id", "title", "description", "type", "staff_ids", "date", "ideal_time", "status"],
+                data: (appState.housekeeping_projects || []).slice(-5)
+            },
+            tb_housekeeping_submissions: {
+                description: "Pengajuan persetujuan proyek housekeeping dari staf (hanya 5 data terakhir)",
+                columns: ["submission_id", "project_id", "staff_id", "description", "photo_url", "submitted_at", "status", "kpi_score", "approved_by", "approved_at"],
+                data: (appState.housekeeping_submissions || []).slice(-5)
+            }
+        }
+    };
+    return JSON.stringify(context);
 }

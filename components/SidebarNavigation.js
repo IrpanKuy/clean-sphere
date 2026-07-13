@@ -78,7 +78,6 @@ const SidebarNavigation = {
             <a href="#" :class="['block px-4 py-2 text-xs font-semibold rounded-r-lg transition-colors no-underline', activeSubmenu === 'areas-data' ? 'text-primary-royal bg-blue-50/50' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50']" @click.prevent="$emit('set-submenu', 'areas-data')">Data Area</a>
             <a href="#" :class="['block px-4 py-2 text-xs font-semibold rounded-r-lg transition-colors no-underline', activeSubmenu === 'area-shifts' ? 'text-primary-royal bg-blue-50/50' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50']" @click.prevent="$emit('set-submenu', 'area-shifts')">Konfigurasi Shift</a>
             <a href="#" :class="['block px-4 py-2 text-xs font-semibold rounded-r-lg transition-colors no-underline', activeSubmenu === 'staff-area-tasks' ? 'text-primary-royal bg-blue-50/50' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50']" @click.prevent="$emit('set-submenu', 'staff-area-tasks')">Penugasan Staf</a>
-            <a href="#" :class="['block px-4 py-2 text-xs font-semibold rounded-r-lg transition-colors no-underline', activeSubmenu === 'area-tasks-daily' ? 'text-primary-royal bg-blue-50/50' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50']" @click.prevent="$emit('set-submenu', 'area-tasks-daily')">Laporan Harian</a>
           </div>
         </div>
 
@@ -96,10 +95,10 @@ const SidebarNavigation = {
             </svg>
           </button>
           <div class="flex flex-col gap-0.5 ml-[30px] border-l border-slate-200 mt-1" v-show="activeMenu === 'inventory'">
-            <a href="#" :class="['block px-4 py-2 text-xs font-semibold rounded-r-lg transition-colors no-underline', activeSubmenu === 'inventory-stock' ? 'text-primary-royal bg-blue-50/50' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50']" @click.prevent="$emit('set-submenu', 'inventory-stock')">Stok Barang</a>
-            <a href="#" :class="['block px-4 py-2 text-xs font-semibold rounded-r-lg transition-colors no-underline', activeSubmenu === 'inventory-rooms' ? 'text-primary-royal bg-blue-50/50' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50']" @click.prevent="$emit('set-submenu', 'inventory-rooms')">Inventaris Kamar</a>
+            <a href="#" :class="['block px-4 py-2 text-xs font-semibold rounded-r-lg transition-colors no-underline', activeSubmenu === 'inventory-stock' ? 'text-primary-royal bg-blue-50/50' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50']" @click.prevent="$emit('set-submenu', 'inventory-stock')">Master Barang</a>
             <a href="#" :class="['block px-4 py-2 text-xs font-semibold rounded-r-lg transition-colors no-underline', activeSubmenu === 'inventory-log' ? 'text-primary-royal bg-blue-50/50' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50']" @click.prevent="$emit('set-submenu', 'inventory-log')">Mutasi Stok</a>
-            <a href="#" :class="['block px-4 py-2 text-xs font-semibold rounded-r-lg transition-colors no-underline', activeSubmenu === 'inventory-categories' ? 'text-primary-royal bg-blue-50/50' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50']" @click.prevent="$emit('set-submenu', 'inventory-categories')">Kategori</a>
+            <a href="#" :class="['block px-4 py-2 text-xs font-semibold rounded-r-lg transition-colors no-underline', activeSubmenu === 'inventory-categories' ? 'text-primary-royal bg-blue-50/50' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50']" @click.prevent="$emit('set-submenu', 'inventory-categories')">Konfigurasi Kategori</a>
+            <a href="#" :class="['block px-4 py-2 text-xs font-semibold rounded-r-lg transition-colors no-underline', activeSubmenu === 'inventory-monthly' ? 'text-primary-royal bg-blue-50/50' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50']" @click.prevent="$emit('set-submenu', 'inventory-monthly')">Inventaris Bulanan</a>
           </div>
         </div>
 

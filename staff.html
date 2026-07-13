@@ -590,8 +590,10 @@
             <div class="flex justify-between"><span>Waktu Kirim:</span> <span class="font-medium text-slate-700">{{ formatDateTime(sub.submitted_at) }}</span></div>
           </div>
 
-          <div v-if="sub.photo_url" class="rounded-xl overflow-hidden max-h-[150px] border border-slate-100 relative group cursor-pointer shadow-sm mb-2">
-            <img :src="getDisplayPhotoUrl(sub.photo_url)" class="w-full h-full object-cover max-h-[150px]" alt="Bukti Foto">
+          <div v-if="sub.photo_url" class="rounded-xl overflow-hidden border border-slate-100 relative group cursor-pointer shadow-sm mb-2 bg-slate-100 hover:shadow-md transition-shadow">
+            <a :href="sub.photo_url" target="_blank" class="block">
+              <img :src="getDisplayPhotoUrl(sub.photo_url)" class="max-w-full max-h-[200px] object-contain rounded-xl mx-auto block bg-slate-100 border border-slate-200" alt="Bukti Foto">
+            </a>
           </div>
         </div>
       </div>
@@ -660,7 +662,7 @@
             <!-- Image Preview Card -->
             <div v-if="hkImagePreview" class="bg-slate-50 border border-slate-100 rounded-2xl p-3 flex items-center gap-3 relative animate-[fadeIn_0.2s_ease-out] mb-3">
               <div class="w-16 h-16 rounded-xl overflow-hidden border border-slate-200 shrink-0">
-                <img :src="hkImagePreview" class="w-full h-full object-cover">
+                <img :src="hkImagePreview" class="w-full h-full object-contain">
               </div>
               <div class="flex-1 min-w-0">
                 <p class="text-xs font-bold text-slate-800 truncate">{{ hkImageFile ? hkImageFile.name : 'Foto Kamera Langsung' }}</p>
@@ -781,7 +783,7 @@
             <!-- Image Preview Card -->
             <div v-if="projectImagePreview" class="bg-slate-50 border border-slate-100 rounded-2xl p-3 flex items-center gap-3 relative animate-[fadeIn_0.2s_ease-out] mb-3">
               <div class="w-16 h-16 rounded-xl overflow-hidden border border-slate-200 shrink-0">
-                <img :src="projectImagePreview" class="w-full h-full object-cover">
+                <img :src="projectImagePreview" class="w-full h-full object-contain">
               </div>
               <div class="flex-1 min-w-0">
                 <p class="text-xs font-bold text-slate-800 truncate">{{ projectImageFile ? projectImageFile.name : 'Foto Kamera Langsung' }}</p>
@@ -816,8 +818,10 @@
                 <p class="text-xs text-slate-500 mt-1.5 leading-relaxed whitespace-pre-wrap">{{ proj.description || '-' }}</p>
                 
                 <!-- Display project photo if present -->
-                <div v-if="proj.photo_url" class="mt-3 rounded-xl overflow-hidden max-h-[200px] border border-slate-100 relative group cursor-pointer shadow-sm">
-                  <img :src="getDisplayPhotoUrl(proj.photo_url)" class="w-full h-full object-cover max-h-[200px]" alt="Bukti Foto">
+                <div v-if="proj.photo_url" class="mt-3 rounded-xl overflow-hidden border border-slate-100 relative group cursor-pointer shadow-sm bg-slate-50 hover:shadow-md transition-shadow">
+                  <a :href="proj.photo_url" target="_blank" class="block">
+                    <img :src="getDisplayPhotoUrl(proj.photo_url)" class="max-w-full max-h-[250px] object-contain rounded-xl mx-auto block bg-slate-100 border border-slate-200" alt="Bukti Foto">
+                  </a>
                 </div>
               </div>
             </div>
@@ -897,77 +901,260 @@
   <!-- 7. INVENTORY VIEW               -->
   <!-- =============================== -->
   <div v-else-if="currentView === 'inventory'" class="flex-1 flex flex-col bg-slate-50">
-    <div class="bg-gradient-to-r from-amber-600 to-orange-500 px-5 py-5 flex items-center gap-4 text-white shadow-xl shadow-amber-900/10 z-10 relative rounded-b-3xl mb-2">
-      <button @click="currentView = 'dashboard'" class="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center hover:bg-white/30 transition-all active:scale-95 shadow-inner">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
-      </button>
-      <div>
-        <h2 class="text-xl font-extrabold tracking-wide">Inventaris</h2>
-        <p class="text-amber-100 text-xs font-medium">Catat Pemakaian Barang</p>
+    <div class="bg-gradient-to-r from-amber-800 to-amber-600 px-5 py-5 flex flex-col gap-3 text-white shadow-xl shadow-amber-950/10 z-10 relative rounded-b-3xl">
+      <div class="flex items-center gap-4">
+        <button @click="currentView = 'dashboard'" class="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center hover:bg-white/30 transition-all active:scale-95 shadow-inner">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+        </button>
+        <div>
+          <h2 class="text-xl font-extrabold tracking-wide">Sistem Inventaris</h2>
+          <p class="text-amber-200 text-xs font-medium">Manajemen Stok & Pemakaian Barang</p>
+        </div>
+      </div>
+      
+      <!-- Sub-tabs -->
+      <div class="flex bg-amber-950/30 p-1 rounded-xl mt-1">
+        <button @click="invActiveSubTab = 'items'" :class="['flex-1 py-2 text-center text-xs font-bold rounded-lg transition-all', invActiveSubTab === 'items' ? 'bg-white text-amber-800 shadow-sm' : 'text-white/80 hover:text-white']">
+          Stok Barang
+        </button>
+        <button @click="invActiveSubTab = 'mutasi'" :class="['flex-1 py-2 text-center text-xs font-bold rounded-lg transition-all', invActiveSubTab === 'mutasi' ? 'bg-white text-amber-800 shadow-sm' : 'text-white/80 hover:text-white']">
+          Mutasi Stok
+        </button>
+        <button @click="invActiveSubTab = 'history'" :class="['flex-1 py-2 text-center text-xs font-bold rounded-lg transition-all', invActiveSubTab === 'history' ? 'bg-white text-amber-800 shadow-sm' : 'text-white/80 hover:text-white']">
+          Riwayat Log
+        </button>
       </div>
     </div>
     
     <div class="p-5 flex-1 overflow-y-auto">
       
-      <!-- Input Form -->
-      <form @submit.prevent="submitInventory" class="bg-white p-6 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.05)] border border-slate-100 flex flex-col gap-5 mb-8 relative overflow-hidden">
-        <div class="absolute -right-6 -top-6 w-24 h-24 bg-amber-50 rounded-full blur-2xl pointer-events-none"></div>
-        
-        <div>
-          <label class="block text-xs font-extrabold text-slate-500 mb-2 uppercase tracking-wider ml-1">Pilih Barang</label>
-          <div class="relative">
-            <select v-model="inventoryForm.item" class="w-full bg-slate-50 border-2 border-slate-100 rounded-xl p-4 text-sm font-bold text-slate-700 focus:border-amber-400 focus:bg-white focus:ring-4 focus:ring-amber-50 transition-all outline-none appearance-none cursor-pointer">
-              <option disabled value="">-- Pilih dari Gudang --</option>
-              <option value="Sabun Kaca">Sabun Pembersih Kaca (Botol)</option>
-              <option value="Pewangi Ruangan">Pewangi Ruangan (Pouch)</option>
-              <option value="Sapu Lidi">Sapu Lidi</option>
-              <option value="Sikat Lantai">Sikat Lantai</option>
+      <!-- TAB 1: STOK BARANG (READ-ONLY) -->
+      <div v-if="invActiveSubTab === 'items'" class="flex flex-col gap-4">
+        <!-- Filters -->
+        <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col md:flex-row gap-4">
+          <div class="flex-1">
+            <input type="text" v-model="inventorySearchQuery" placeholder="Cari kode/nama barang/kamar..." class="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-amber-500">
+          </div>
+          <div class="grid grid-cols-2 gap-3 w-full md:w-auto">
+            <select v-model="inventoryCategoryFilter" class="border border-slate-200 rounded-xl px-3 py-2.5 text-xs bg-white outline-none focus:border-amber-500">
+              <option value="">Semua Kategori</option>
+              <option v-for="cat in appState.inventory_categories" :key="cat.category_id" :value="cat.category_id">{{ cat.category_name }}</option>
             </select>
-            <div class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-            </div>
+            <select v-model="inventoryRoomFilter" class="border border-slate-200 rounded-xl px-3 py-2.5 text-xs bg-white outline-none focus:border-amber-500">
+              <option value="">Semua Kamar</option>
+              <option value="Global">Gudang Global</option>
+              <option v-for="room in sortedRoomsList" :key="room.room_number" :value="room.room_number">Kamar {{ room.room_number }}</option>
+            </select>
           </div>
         </div>
-        
-        <div>
-          <label class="block text-xs font-extrabold text-slate-500 mb-2 uppercase tracking-wider ml-1">Jumlah Diambil</label>
-          <div class="flex items-center gap-3">
-            <input type="number" v-model="inventoryForm.qty" min="1" required class="flex-1 bg-slate-50 border-2 border-slate-100 rounded-xl p-4 text-xl font-black text-slate-700 focus:border-amber-400 focus:bg-white focus:ring-4 focus:ring-amber-50 transition-all outline-none text-center">
-            <span class="bg-amber-100 text-amber-800 px-4 py-4 rounded-xl font-bold text-sm h-full flex items-center">Pcs</span>
-          </div>
-        </div>
-        
-        <button type="submit" class="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-extrabold text-lg py-4 rounded-2xl mt-2 active:scale-95 transition-all shadow-[0_8px_20px_rgba(245,158,11,0.3)] flex justify-center items-center gap-2">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-          Catat Pengambilan
-        </button>
-      </form>
 
-      <!-- History -->
-      <div>
-        <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 pl-1">Riwayat Pengambilan Hari Ini</p>
-        <div class="flex flex-col gap-3">
+        <!-- Table Card -->
+        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs whitespace-nowrap">
+              <thead class="bg-slate-50 border-b border-slate-100 text-slate-500 font-bold uppercase tracking-wider">
+                <tr>
+                  <th class="px-4 py-3">Kode</th>
+                  <th class="px-4 py-3">Nama Barang</th>
+                  <th class="px-4 py-3">Kategori</th>
+                  <th class="px-4 py-3">Lokasi</th>
+                  <th class="px-4 py-3 text-center">Stok</th>
+                  <th class="px-4 py-3 text-center">Min. Stok</th>
+                  <th class="px-4 py-3">Remarks</th>
+                  <!-- DYNAMIC COLUMNS -->
+                  <th v-for="col in dynamicTableColumns" :key="col" class="px-4 py-3 text-slate-600 font-extrabold bg-amber-50/50">{{ col }}</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100 text-slate-700">
+                <tr v-if="filteredInventoryItems.length === 0">
+                  <td colspan="10" class="px-4 py-10 text-center text-slate-400 font-medium italic">Tidak ada data barang ditemukan.</td>
+                </tr>
+                <tr v-for="item in filteredInventoryItems" :key="item.item_id" class="hover:bg-slate-50/30 transition-colors">
+                  <td class="px-4 py-3 font-semibold text-slate-900">{{ item.item_code }}</td>
+                  <td class="px-4 py-3 font-bold text-slate-800">{{ item.item_name }}</td>
+                  <td class="px-4 py-3 text-slate-500">{{ getCategoryName(item.category_id) }}</td>
+                  <td class="px-4 py-3">
+                    <span :class="['px-2 py-0.5 rounded text-[10px] font-bold', item.location_room === 'Global' ? 'bg-indigo-50 text-indigo-700' : 'bg-slate-100 text-slate-700']">
+                      {{ item.location_room === 'Global' ? 'Global' : 'Kamar ' + item.location_room }}
+                    </span>
+                  </td>
+                  <td class="px-4 py-3 text-center">
+                    <span :class="['font-extrabold text-[13px] px-2 py-0.5 rounded', Number(item.stock_current) <= Number(item.min_stock) ? 'bg-rose-50 text-rose-600 font-bold' : 'text-slate-800']">
+                      {{ item.stock_current }}
+                    </span>
+                  </td>
+                  <td class="px-4 py-3 text-center font-medium text-slate-400">{{ item.min_stock }}</td>
+                  <td class="px-4 py-3 text-slate-500 text-[11px] truncate max-w-[150px]">{{ item.remarks || '-' }}</td>
+                  <!-- DYNAMIC ATTRIBUTES RENDERING -->
+                  <td v-for="col in dynamicTableColumns" :key="col" class="px-4 py-3 text-slate-700 font-semibold bg-amber-50/10">
+                    {{ getDetailValue(item.detail_spesifik, col) }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: MUTASI STOK (FREE ACCESS) -->
+      <div v-else-if="invActiveSubTab === 'mutasi'" class="flex flex-col gap-4">
+        <form @submit.prevent="submitDirectTx" class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col gap-4 relative overflow-hidden">
+          <div class="absolute -right-6 -top-6 w-24 h-24 bg-amber-50 rounded-full blur-2xl pointer-events-none"></div>
           
-          <div v-if="inventoryHistory.length === 0" class="text-center py-6 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 text-sm font-semibold">
-            Belum ada pengambilan barang.
-          </div>
-
-          <div v-for="log in inventoryHistory" :key="log.id" class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center justify-between animate-[fadeIn_0.3s_ease-out]">
-            <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center shrink-0">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path></svg>
-              </div>
-              <div>
-                <h4 class="font-bold text-slate-800">{{ log.item }}</h4>
-                <p class="text-[11px] text-slate-400 font-medium">{{ log.time }}</p>
-              </div>
-            </div>
-            <div class="bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
-              <span class="font-black text-slate-700">{{ log.qty }}</span>
-              <span class="text-[10px] font-bold text-slate-400 ml-1">Pcs</span>
+          <div class="border-b border-slate-100 pb-3 mb-2 flex items-center gap-2 text-slate-800">
+            <span class="text-xl">🔄</span>
+            <div>
+              <h3 class="font-extrabold text-sm">Formulir Catat Mutasi Stok</h3>
+              <p class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Gudang & Pemakaian Kamar</p>
             </div>
           </div>
 
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Select Item -->
+            <div>
+              <label class="block text-xs font-bold text-slate-500 mb-1.5 ml-1 uppercase">Pilih Barang</label>
+              <select v-model="directTx.item_id" required class="w-full border border-slate-200 rounded-xl p-3 text-xs bg-slate-50 font-bold text-slate-700 focus:bg-white outline-none">
+                <option value="" disabled>-- Pilih Barang --</option>
+                <option v-for="item in appState.inventory" :key="item.item_id" :value="item.item_id">
+                  [{{ item.item_code }}] {{ item.item_name }} (Stok: {{ item.stock_current }} - {{ item.location_room }})
+                </option>
+              </select>
+            </div>
+
+            <!-- Select Type -->
+            <div>
+              <label class="block text-xs font-bold text-slate-500 mb-1.5 ml-1 uppercase">Tipe Transaksi</label>
+              <select v-model="directTx.type" required class="w-full border border-slate-200 rounded-xl p-3 text-xs bg-slate-50 font-bold text-slate-700 focus:bg-white outline-none">
+                <option value="in">Stok Masuk (Supply / Pengembalian)</option>
+                <option value="out">Stok Keluar (Pemakaian / Mutasi)</option>
+              </select>
+            </div>
+
+            <!-- Quantity -->
+            <div>
+              <label class="block text-xs font-bold text-slate-500 mb-1.5 ml-1 uppercase">Jumlah (Quantity)</label>
+              <input type="number" v-model="directTx.quantity" min="1" required class="w-full border border-slate-200 rounded-xl p-3 text-xs bg-slate-50 font-bold text-slate-700 focus:bg-white outline-none">
+            </div>
+
+            <!-- Location Room Target -->
+            <div>
+              <label class="block text-xs font-bold text-slate-500 mb-1.5 ml-1 uppercase">Lokasi / Kamar Target</label>
+              <select v-model="directTx.locationRoom" required class="w-full border border-slate-200 rounded-xl p-3 text-xs bg-slate-50 font-bold text-slate-700 focus:bg-white outline-none">
+                <option value="Global">Gudang Global</option>
+                <option v-for="room in sortedRoomsList" :key="room.room_number" :value="room.room_number">Kamar {{ room.room_number }}</option>
+              </select>
+            </div>
+
+            <!-- Remarks -->
+            <div class="col-span-full">
+              <label class="block text-xs font-bold text-slate-500 mb-1.5 ml-1 uppercase">Keterangan / Remarks</label>
+              <input type="text" v-model="directTx.remarks" placeholder="Contoh: Pengisian aminities toilet kamar 102" class="w-full border border-slate-200 rounded-xl p-3 text-xs bg-slate-50 font-medium text-slate-700 focus:bg-white outline-none">
+            </div>
+
+            <!-- DYNAMIC ATTRIBUTES INPUT FIELDS FOR TRANSACTION -->
+            <div v-if="txDetailFields.length > 0" class="col-span-full border-t border-slate-100 pt-4 mt-2">
+              <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 ml-1">Detail Spesifik (Atribut Kategori)</h4>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-amber-50/20 p-4 rounded-2xl border border-amber-100">
+                <div v-for="field in txDetailFields" :key="field.name">
+                  <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1 ml-1">{{ field.name }}</label>
+                  <input type="text" v-model="field.value" class="w-full bg-white border border-slate-200 rounded-lg p-2.5 text-xs font-medium text-slate-700 focus:border-amber-500 outline-none">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <button type="submit" class="w-full bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-700 hover:to-amber-600 text-white font-extrabold text-sm py-3.5 rounded-xl mt-4 active:scale-95 transition-all shadow-md flex justify-center items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+            Catat Mutasi Stok
+          </button>
+        </form>
+      </div>
+
+      <!-- TAB 3: RIWAYAT LOG MUTASI -->
+      <div v-else class="flex flex-col gap-4">
+        <!-- Filters -->
+        <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col gap-3">
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="flex flex-col gap-1">
+              <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Kategori</label>
+              <select v-model="logCategoryFilter" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-white outline-none focus:border-amber-500">
+                <option value="">Semua Kategori</option>
+                <option v-for="cat in appState.inventory_categories" :key="cat.category_id" :value="cat.category_id">{{ cat.category_name }}</option>
+              </select>
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Lokasi</label>
+              <select v-model="logRoomFilter" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-white outline-none focus:border-amber-500">
+                <option value="">Semua Lokasi</option>
+                <option value="Global">Global</option>
+                <option v-for="room in sortedRoomsList" :key="room.room_number" :value="room.room_number">Kamar {{ room.room_number }}</option>
+              </select>
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Filter Cepat</label>
+              <select v-model="logPeriodFilter" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-white outline-none focus:border-amber-500">
+                <option value="all">Semua Waktu</option>
+                <option value="day">Hari Ini</option>
+                <option value="week">7 Hari Terakhir</option>
+                <option value="month">Bulan Ini</option>
+              </select>
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Bulan Spesifik</label>
+              <input type="month" v-model="logMonthFilter" class="w-full border border-slate-200 rounded-xl px-3 py-1.5 text-xs bg-white outline-none focus:border-amber-500">
+            </div>
+          </div>
+        </div>
+
+        <!-- Logs Table -->
+        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs whitespace-nowrap">
+              <thead class="bg-slate-50 border-b border-slate-100 text-slate-500 font-bold uppercase tracking-wider">
+                <tr>
+                  <th class="px-4 py-3">Waktu</th>
+                  <th class="px-4 py-3">Kode</th>
+                  <th class="px-4 py-3">Nama Barang</th>
+                  <th class="px-4 py-3">Jenis</th>
+                  <th class="px-4 py-3 text-center">Jumlah</th>
+                  <th class="px-4 py-3">Lokasi</th>
+                  <th class="px-4 py-3">Oleh Staf</th>
+                  <th class="px-4 py-3">Keterangan</th>
+                  <!-- DYNAMIC TRANS COLUMNS -->
+                  <th v-for="col in logDynamicTableColumns" :key="col" class="px-4 py-3 text-slate-600 font-extrabold bg-amber-50/50">{{ col }}</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100 text-slate-700">
+                <tr v-if="filteredInventoryTransactions.length === 0">
+                  <td colspan="10" class="px-4 py-10 text-center text-slate-400 font-medium italic">Tidak ada transaksi ditemukan.</td>
+                </tr>
+                <tr v-for="tx in filteredInventoryTransactions" :key="tx.transaction_id" class="hover:bg-slate-50/30 transition-colors">
+                  <td class="px-4 py-3 text-[11px] font-medium text-slate-400">
+                    {{ tx.timestamp ? new Date(tx.timestamp).toLocaleString('id-ID', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : tx.date }}
+                  </td>
+                  <td class="px-4 py-3 font-semibold text-slate-500">{{ getItemById(tx.item_id) ? getItemById(tx.item_id).item_code : '-' }}</td>
+                  <td class="px-4 py-3 font-bold text-slate-800">{{ getItemById(tx.item_id) ? getItemById(tx.item_id).item_name : '-' }}</td>
+                  <td class="px-4 py-3">
+                    <span :class="['px-2 py-0.5 rounded text-[10px] font-bold uppercase', tx.type === 'in' ? 'bg-green-50 text-green-700 border border-green-200/50' : 'bg-rose-50 text-rose-700 border border-rose-200/50']">
+                      {{ tx.type === 'in' ? 'Masuk' : 'Keluar' }}
+                    </span>
+                  </td>
+                  <td class="px-4 py-3 text-center font-extrabold text-[13px] text-slate-800">{{ tx.quantity }} Pcs</td>
+                  <td class="px-4 py-3">
+                    <span :class="['px-2 py-0.5 rounded text-[10px] font-bold', tx.location_room === 'Global' ? 'bg-indigo-50 text-indigo-700' : 'bg-slate-100 text-slate-700']">
+                      {{ tx.location_room === 'Global' ? 'Global' : 'Kamar ' + tx.location_room }}
+                    </span>
+                  </td>
+                  <td class="px-4 py-3 font-medium text-slate-600">{{ getHkStaffName(tx.user_id) }}</td>
+                  <td class="px-4 py-3 text-slate-500 text-[11px] truncate max-w-[150px]">{{ tx.remarks || '-' }}</td>
+                  <!-- DYNAMIC ATTRIBUTES RENDERING FROM TRANSACTION DETAIL SPESIFIK -->
+                  <td v-for="col in logDynamicTableColumns" :key="col" class="px-4 py-3 text-slate-700 font-semibold bg-amber-50/10">
+                    {{ getDetailValue(tx.detail_spesifik || (getItemById(tx.item_id) ? getItemById(tx.item_id).detail_spesifik : ''), col) }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -977,14 +1164,226 @@
   <!-- =============================== -->
   <!-- 8. PLACEHOLDER VIEWS            -->
   <!-- =============================== -->
-  <div v-else-if="currentView !== 'dashboard'" class="flex-1 flex flex-col bg-slate-50">
+  <!-- =============================== -->
+  <!-- 8. PUBLIC AREA CONTROL VIEW     -->
+  <!-- =============================== -->
+  <div v-else-if="currentView === 'area-control'" class="flex-1 flex flex-col bg-slate-50 relative">
+    <!-- Header -->
+    <div class="bg-gradient-to-r from-primary-navy to-primary-royal px-5 py-5 flex items-center gap-4 text-white shadow-xl shadow-blue-900/10 z-10 relative rounded-b-3xl mb-2">
+      <button @click="currentView = 'dashboard'; selectedAreaTask = null;" class="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center hover:bg-white/30 transition-all active:scale-95 shadow-inner border-none cursor-pointer">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+      </button>
+      <div>
+        <h2 class="text-xl font-extrabold tracking-wide">Area Publik</h2>
+        <p class="text-blue-100 text-xs font-medium">Laporan Pembersihan Area Publik</p>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div v-if="!selectedAreaTask" class="px-5 mb-2">
+      <div class="bg-slate-100 p-1 rounded-xl flex gap-1">
+        <button 
+          @click="areaControlTab = 'areas'"
+          :class="['flex-1 py-2 text-xs font-extrabold rounded-lg border-none transition-all cursor-pointer', 
+            areaControlTab === 'areas' ? 'bg-white text-primary-navy shadow-sm' : 'bg-transparent text-slate-400 hover:text-slate-600']">
+          Daftar Area
+        </button>
+        <button 
+          @click="areaControlTab = 'history'"
+          :class="['flex-1 py-2 text-xs font-extrabold rounded-lg border-none transition-all cursor-pointer', 
+            areaControlTab === 'history' ? 'bg-white text-primary-navy shadow-sm' : 'bg-transparent text-slate-400 hover:text-slate-600']">
+          Riwayat Tugas
+        </button>
+      </div>
+    </div>
+
+    <!-- Tab 1: Daftar Area -->
+    <div v-if="!selectedAreaTask && areaControlTab === 'areas'" class="p-5 flex-1 overflow-y-auto">
+      <!-- Search -->
+      <div class="mb-4 relative">
+        <input 
+          type="text" 
+          v-model="areaSearchQuery" 
+          placeholder="Cari area..." 
+          class="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 pl-10 text-xs font-bold text-slate-700 placeholder-slate-400 outline-none focus:border-blue-500 transition-colors shadow-sm">
+        <svg class="absolute left-3.5 top-3.5 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+      </div>
+
+      <div class="flex items-center justify-between mb-4">
+        <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Daftar Penugasan Anda</p>
+        <span class="bg-indigo-100 text-indigo-700 text-[10px] font-bold px-2.5 py-1 rounded-full">{{ myAssignedAreas.length }} Area</span>
+      </div>
+
+      <div class="flex flex-col gap-4">
+        <!-- Area Loop -->
+        <div v-for="area in myAssignedAreas" :key="area.area_id" class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex flex-col gap-4">
+          <div class="flex items-start gap-4">
+            <div class="w-12 h-12 rounded-full flex items-center justify-center text-sm font-black bg-indigo-50 text-indigo-700 shrink-0">
+              {{ area.id_number || 'PA' }}
+            </div>
+            <div class="flex-1 min-w-0">
+              <h3 class="font-extrabold text-slate-800 text-base leading-tight">{{ area.area_name }}</h3>
+              <p class="text-[11px] text-slate-400 font-semibold mt-1">Daftar Shift Anda di Area ini:</p>
+            </div>
+          </div>
+
+          <!-- Shift List for this specific area -->
+          <div class="grid grid-cols-1 gap-2.5">
+            <div v-for="shift in getAreaShiftsForUser(area.area_id)" :key="shift.area_shift_id" 
+              @click="openAreaChecklist(area, shift)"
+              class="flex items-center justify-between p-3.5 bg-slate-50 rounded-xl hover:bg-slate-100/70 border border-slate-100 transition-all cursor-pointer active:scale-[0.99]">
+              <div class="flex items-center gap-3">
+                <div class="w-2.5 h-2.5 rounded-full" :class="getDailyTaskStatusColor(area.area_id, shift.area_shift_id)"></div>
+                <div>
+                  <span class="text-xs font-bold text-slate-800">{{ shift.shift_name }}</span>
+                  <span class="text-[10px] text-slate-400 font-medium block">{{ shift.start_time }} - {{ shift.end_time }}</span>
+                </div>
+              </div>
+              
+              <div class="flex items-center gap-1">
+                <span class="text-[10.5px] font-extrabold uppercase px-2 py-0.5 rounded-md border" :class="getDailyTaskStatusBadgeClass(area.area_id, shift.area_shift_id)">
+                  {{ getDailyTaskStatus(area.area_id, shift.area_shift_id) }}
+                </span>
+                <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="myAssignedAreas.length === 0" class="text-center py-12 px-4 text-slate-400 text-sm font-medium">
+          Anda tidak memiliki tugas area publik hari ini.
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 2: Riwayat Tugas -->
+    <div v-if="!selectedAreaTask && areaControlTab === 'history'" class="p-5 flex-1 overflow-y-auto">
+      <div class="flex items-center justify-between mb-4">
+        <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Riwayat Tugas Hari Ini</p>
+        <span class="bg-blue-100 text-blue-700 text-[10px] font-bold px-2.5 py-1 rounded-full">{{ myTodayAreaHistory.length }} Laporan</span>
+      </div>
+
+      <div class="flex flex-col gap-4">
+        <div v-for="log in myTodayAreaHistory" :key="log.task_daily_id" class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex flex-col gap-3">
+          <div class="flex justify-between items-start">
+            <div>
+              <h4 class="font-extrabold text-slate-800 text-sm">{{ getAreaName(log.area_id) }}</h4>
+              <span class="text-[10px] text-slate-400 font-semibold block mt-1">Shift: {{ getShiftName(log.area_shift_id) }} • Tanggal: {{ log.date }}</span>
+            </div>
+            <span class="bg-emerald-50 text-emerald-700 border border-emerald-200/50 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase">
+              {{ log.status }}
+            </span>
+          </div>
+
+          <div v-if="log.remarks" class="text-xs text-slate-500 italic bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+            Catatan: {{ log.remarks }}
+          </div>
+
+          <div class="flex justify-between items-center text-[10px] text-slate-400 border-t border-slate-50 pt-2">
+            <span>Dikerjakan oleh: <strong class="text-slate-700">{{ getUserName(log.staff_id) }}</strong></span>
+            <span>Jam: {{ formatDateTime(log.timestamp) }}</span>
+          </div>
+        </div>
+
+        <div v-if="myTodayAreaHistory.length === 0" class="text-center py-12 px-4 text-slate-400 text-sm font-medium">
+          Belum ada riwayat pengerjaan area hari ini.
+        </div>
+      </div>
+    </div>
+
+    <!-- Sub-View 3: Dynamic Checklist Form Editor for Selected Shift -->
+    <div v-if="selectedAreaTask" class="p-5 flex-1 overflow-y-auto bg-slate-50 flex flex-col gap-4">
+      <!-- Info Card -->
+      <div class="bg-white rounded-2xl p-4 border border-slate-200/60 shadow-sm flex flex-col gap-2">
+        <div class="flex justify-between items-center">
+          <span class="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Formulir Laporan Area</span>
+          <button @click="selectedAreaTask = null" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 text-[10.5px] font-bold rounded-lg border-none cursor-pointer">
+            Kembali
+          </button>
+        </div>
+        <h3 class="font-extrabold text-slate-900 text-lg leading-tight">{{ selectedAreaTask.area.area_name }}</h3>
+        <div class="grid grid-cols-2 gap-3 text-xs font-semibold text-slate-500 mt-1.5 pt-2 border-t border-slate-100">
+          <div>Shift: <span class="text-slate-800 font-bold">{{ selectedAreaTask.shift.shift_name }}</span></div>
+          <div>Jam: <span class="text-slate-800 font-bold">{{ selectedAreaTask.shift.start_time }} - {{ selectedAreaTask.shift.end_time }}</span></div>
+        </div>
+      </div>
+
+      <!-- Checklist Categories -->
+      <div class="flex flex-col gap-4">
+        <div v-for="cat in areaChecklistUiCategories" :key="cat.name" class="bg-white border border-slate-200/60 rounded-2xl overflow-hidden shadow-sm">
+          <div class="px-4 py-3 bg-slate-50/80 border-b border-slate-200/60 flex items-center justify-between">
+            <h5 class="text-xs font-extrabold text-slate-900 m-0 uppercase tracking-wide">
+              {{ cat.name }} 
+              <span class="px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-blue-50 text-blue-700 border border-blue-200 ml-1.5">
+                {{ cat.type }}
+              </span>
+            </h5>
+          </div>
+
+          <div class="flex flex-col p-2">
+            <!-- Checklist Checkboxes -->
+            <div v-if="cat.type === 'checklist'" v-for="item in cat.items" :key="item.name" class="flex items-center px-4 py-3.5 hover:bg-slate-50/50 border-b border-slate-100 last:border-none transition-colors">
+              <label class="flex items-center gap-3 cursor-pointer select-none w-full">
+                <div class="relative flex items-center justify-center">
+                  <input type="checkbox" v-model="item.checked" class="peer appearance-none w-5 h-5 border-2 border-slate-300 rounded focus:ring-4 focus:ring-blue-500/20 checked:bg-blue-600 checked:border-blue-600 transition-all cursor-pointer">
+                  <svg class="absolute w-3.5 h-3.5 text-white opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+                  </svg>
+                </div>
+                <span class="text-xs font-bold text-slate-700 peer-checked:text-slate-900">{{ item.name }}</span>
+              </label>
+            </div>
+
+            <!-- In/Out Inputs (Linen) -->
+            <div v-if="cat.type === 'inout'" v-for="item in cat.items" :key="item.name" class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 px-4 py-3.5 border-b border-slate-100 last:border-none">
+              <span class="text-xs font-bold text-slate-700">{{ item.name }}</span>
+              <div class="flex items-center gap-4">
+                <div class="flex items-center gap-1.5">
+                  <span class="text-[10px] text-slate-400 font-bold uppercase">Kotor Out:</span>
+                  <input type="number" v-model.number="item.out" class="w-16 h-[32px] text-center border border-slate-200 rounded-lg text-xs font-bold" min="0">
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <span class="text-[10px] text-slate-400 font-bold uppercase">Bersih In:</span>
+                  <input type="number" v-model.number="item.in" class="w-16 h-[32px] text-center border border-slate-200 rounded-lg text-xs font-bold" min="0">
+                </div>
+              </div>
+            </div>
+
+            <!-- In Inputs (Refill) -->
+            <div v-if="cat.type === 'in'" v-for="item in cat.items" :key="item.name" class="flex items-center justify-between gap-2.5 px-4 py-3.5 border-b border-slate-100 last:border-none">
+              <span class="text-xs font-bold text-slate-700">{{ item.name }}</span>
+              <div class="flex items-center gap-1.5">
+                <span class="text-[10px] text-slate-400 font-bold uppercase">Refill Qty:</span>
+                <input type="number" v-model.number="item.in" class="w-16 h-[32px] text-center border border-slate-200 rounded-lg text-xs font-bold" min="0">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Remarks / Notes -->
+      <div class="flex flex-col gap-1.5">
+        <label class="text-xs font-bold text-slate-700">Catatan Pengerjaan</label>
+        <textarea v-model="selectedAreaTask.remarks" placeholder="Tuliskan keterangan jika ada kendala atau informasi tambahan..." rows="3" class="w-full bg-white border border-slate-200 rounded-2xl p-4 text-xs font-semibold focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none resize-none shadow-sm"></textarea>
+      </div>
+
+      <!-- Submit -->
+      <button @click="submitAreaChecklistReport" class="h-[46px] w-full bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black text-sm shadow-lg shadow-indigo-500/20 border-none transition-all active:scale-95 cursor-pointer shrink-0">
+        Kirim Laporan Area
+      </button>
+    </div>
+  </div>
+
+  <!-- Fallback Views -->
+  <div v-else class="flex-1 flex flex-col bg-slate-50">
     <div class="bg-primary-navy px-4 py-4 flex items-center gap-3 text-white shadow-md z-10 relative">
       <button @click="currentView = 'dashboard'" class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
       </button>
       <h2 class="text-lg font-bold">
-        {{ currentView === 'area-control' ? 'Area Publik' : 
-           currentView === 'housekeeping-projects' ? 'Proyek Rutin' : 
+        {{ currentView === 'housekeeping-projects' ? 'HouseKeeping Project' : 
            currentView === 'staff-projects' ? 'Proyek Staff' : 
            currentView === 'inventory' ? 'Inventaris' : 'Pengajuan Izin' }}
       </h2>
@@ -1828,8 +2227,8 @@ createApp({
         if (!staffArr.includes(myId)) return false;
         
         // Exclude if already submitted a pending/approved report for this project
-        const mySub = (appState.housekeeping_submissions || []).find(s => String(s.project_id) === String(p.project_id) && String(s.staff_id) === myId);
-        return !mySub || mySub.status === 'Rejected';
+        const hasActiveSub = (appState.housekeeping_submissions || []).some(s => String(s.project_id) === String(p.project_id) && String(s.staff_id) === myId && s.status !== 'Rejected');
+        return !hasActiveSub;
       });
     });
 
@@ -1968,7 +2367,7 @@ createApp({
       if (!url) return '';
       const match = url.match(/id=([a-zA-Z0-9-_]+)/) || url.match(/\/d\/([a-zA-Z0-9-_]+)/);
       if (match) {
-        return `https://lh3.googleusercontent.com/d/${match[1]}`;
+        return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w1000`;
       }
       return url;
     };
@@ -1978,32 +2377,406 @@ createApp({
       Swal.fire('Berhasil', 'Pengajuan izin/cuti telah dikirim ke Manager.', 'success');
     };
     
-    // Inventory state
-    const inventoryForm = ref({ item: '', qty: 1 });
-    const inventoryHistory = ref([
-      { id: 1, item: 'Sabun Kaca', qty: 2, time: '08:30 WIB' }
-    ]);
+    // --- Inventory System (Revisi Dynamic CRUD & Mutasi Staff) ---
+    const invActiveSubTab = ref('items');
+    const inventoryCategoryFilter = ref('');
+    const inventoryRoomFilter = ref('');
+    const inventorySearchQuery = ref('');
     
-    const submitInventory = () => {
-      if (!inventoryForm.value.item || inventoryForm.value.qty < 1) return;
+    const logCategoryFilter = ref('');
+    const logRoomFilter = ref('');
+    const logPeriodFilter = ref('all');
+    const logDateFilter = ref('');
+    const logMonthFilter = ref('');
+    
+    const directTx = ref({
+      item_id: '',
+      type: 'out',
+      quantity: 1,
+      remarks: '',
+      locationRoom: 'Global'
+    });
+    
+    const txDetailFields = ref([]);
+
+    const getHkStaffName = (userId) => {
+      const u = (appState.users || []).find(x => x.user_id === userId);
+      return u ? u.name : userId || 'Sistem';
+    };
+
+    const getItemById = (id) => {
+      return (appState.inventory || []).find(i => i.item_id === id);
+    };
+
+    const getCategoryName = (catId) => {
+      const cat = (appState.inventory_categories || []).find(c => c.category_id === catId);
+      return cat ? cat.category_name : catId;
+    };
+
+    const safeParseJSON = (str, fallback = {}) => {
+      if (!str || str === '' || str === '""') return fallback;
+      try {
+        return JSON.parse(str);
+      } catch(e) {
+        return fallback;
+      }
+    };
+
+    const getDetailValue = (detailStr, key) => {
+      const obj = safeParseJSON(detailStr, {});
+      return obj[key] !== undefined ? obj[key] : '-';
+    };
+
+    const getCategoryDefaultAttrs = (categoryId) => {
+      const cat = (appState.inventory_categories || []).find(c => c.category_id === categoryId);
+      if (!cat || !cat.default_attributes) return [];
+      return safeParseJSON(cat.default_attributes, []);
+    };
+
+    const dynamicTableColumns = computed(() => {
+      if (!inventoryCategoryFilter.value) return [];
+      return getCategoryDefaultAttrs(inventoryCategoryFilter.value);
+    });
+
+    const logDynamicTableColumns = computed(() => {
+      if (!logCategoryFilter.value) return [];
+      return getCategoryDefaultAttrs(logCategoryFilter.value);
+    });
+
+    const sortedRoomsList = computed(() => {
+      if (!appState.rooms) return [];
+      return [...appState.rooms].sort((a, b) => String(a.room_number).localeCompare(String(b.room_number), undefined, {numeric: true}));
+    });
+
+    const filteredInventoryItems = computed(() => {
+      let list = appState.inventory ? [...appState.inventory] : [];
       
+      if (inventoryCategoryFilter.value) {
+        list = list.filter(i => i.category_id === inventoryCategoryFilter.value);
+      }
+      
+      if (inventoryRoomFilter.value) {
+        list = list.filter(i => String(i.location_room).toLowerCase() === String(inventoryRoomFilter.value).toLowerCase());
+      }
+      
+      if (inventorySearchQuery.value) {
+        const q = inventorySearchQuery.value.toLowerCase();
+        list = list.filter(i => 
+          String(i.item_name).toLowerCase().includes(q) ||
+          String(i.item_code).toLowerCase().includes(q) ||
+          String(i.remarks).toLowerCase().includes(q) ||
+          String(i.detail_spesifik).toLowerCase().includes(q) ||
+          String(i.location_room).toLowerCase().includes(q)
+        );
+      }
+      return list;
+    });
+
+    const filteredInventoryTransactions = computed(() => {
+      let list = appState.inventory_transactions ? [...appState.inventory_transactions] : [];
+      
+      if (logCategoryFilter.value) {
+        list = list.filter(t => {
+          const item = getItemById(t.item_id);
+          return item && item.category_id === logCategoryFilter.value;
+        });
+      }
+
+      if (logRoomFilter.value) {
+        list = list.filter(t => String(t.location_room).toLowerCase() === String(logRoomFilter.value).toLowerCase());
+      }
+
       const now = new Date();
-      inventoryHistory.value.unshift({
-        id: Date.now(),
-        item: inventoryForm.value.item,
-        qty: inventoryForm.value.qty,
-        time: now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB'
+      if (logPeriodFilter.value === 'day') {
+        const todayStr = now.toISOString().substring(0, 10);
+        list = list.filter(t => t.date === todayStr);
+      } else if (logPeriodFilter.value === 'week') {
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(now.getDate() - 7);
+        list = list.filter(t => new Date(t.date) >= oneWeekAgo);
+      } else if (logPeriodFilter.value === 'month') {
+        const curYear = now.getFullYear();
+        const curMonth = now.getMonth();
+        list = list.filter(t => {
+          const d = new Date(t.date);
+          return d.getFullYear() === curYear && d.getMonth() === curMonth;
+        });
+      }
+      
+      if (logDateFilter.value) {
+        list = list.filter(t => t.date === logDateFilter.value);
+      }
+      if (logMonthFilter.value) {
+        list = list.filter(t => String(t.date).substring(0, 7) === logMonthFilter.value);
+      }
+
+      if (inventorySearchQuery.value) {
+        const q = inventorySearchQuery.value.toLowerCase();
+        list = list.filter(t => {
+          const item = getItemById(t.item_id);
+          const staff = getHkStaffName(t.user_id);
+          return (
+            (item && String(item.item_name).toLowerCase().includes(q)) ||
+            (item && String(item.item_code).toLowerCase().includes(q)) ||
+            String(t.remarks).toLowerCase().includes(q) ||
+            String(t.location_room).toLowerCase().includes(q) ||
+            staff.toLowerCase().includes(q)
+          );
+        });
+      }
+      
+      list.sort((a, b) => new Date(b.timestamp || b.date) - new Date(a.timestamp || a.date));
+      return list;
+    });
+
+    const loadTxDetailFields = (itemId) => {
+      if (!itemId) {
+        txDetailFields.value = [];
+        return;
+      }
+      const item = getItemById(itemId);
+      if (!item) {
+        txDetailFields.value = [];
+        return;
+      }
+      const details = safeParseJSON(item.detail_spesifik, {});
+      const defaultAttrs = getCategoryDefaultAttrs(item.category_id);
+      
+      txDetailFields.value = defaultAttrs.map(attrName => ({
+        name: attrName,
+        value: details[attrName] !== undefined ? String(details[attrName]) : ''
+      }));
+      
+      if (item.location_room && item.location_room !== 'Global') {
+        directTx.value.locationRoom = item.location_room;
+      } else {
+        directTx.value.locationRoom = 'Global';
+      }
+    };
+
+    // Watcher for directTx.item_id
+    watch(() => directTx.value.item_id, (newVal) => {
+      loadTxDetailFields(newVal);
+    });
+
+    const submitDirectTx = async () => {
+      if (!directTx.value.item_id) {
+        Swal.fire("Peringatan", "Silakan pilih barang terlebih dahulu.", "warning");
+        return;
+      }
+      const todayStr = new Date().toISOString().substring(0, 10);
+      
+      let detailSpesifik = null;
+      if (txDetailFields.value.length > 0) {
+        const detailObj = {};
+        txDetailFields.value.forEach(f => {
+          if (f.name.trim()) {
+            detailObj[f.name.trim()] = f.value;
+          }
+        });
+        detailSpesifik = JSON.stringify(detailObj);
+      }
+      
+      const success = await recordInventoryTxLocal(
+        directTx.value.item_id, 
+        directTx.value.type, 
+        directTx.value.quantity, 
+        todayStr, 
+        directTx.value.remarks,
+        detailSpesifik,
+        directTx.value.locationRoom
+      );
+      
+      if (success) {
+        directTx.value.item_id = '';
+        directTx.value.quantity = 1;
+        directTx.value.remarks = '';
+        txDetailFields.value = [];
+        invActiveSubTab.value = 'history';
+      }
+    };
+
+    // --- Public Area Control Setup ---
+    const areaControlTab = ref('areas');
+    const areaSearchQuery = ref('');
+    const selectedAreaTask = ref(null);
+    const areaChecklistUiCategories = ref([]);
+
+    const myAssignedAreas = computed(() => {
+      if (!appState.currentUser) return [];
+      const myId = String(appState.currentUser.user_id);
+      
+      const assignments = (appState.staff_area_tasks || []).filter(t => 
+        String(t.staff_id) === myId && 
+        t.date === todayStr.value
+      );
+      
+      const areaIds = Array.from(new Set(assignments.map(t => t.area_id)));
+      let list = (appState.areas || []).filter(a => areaIds.includes(a.area_id));
+      
+      const q = areaSearchQuery.value.trim().toLowerCase();
+      if (q) {
+        list = list.filter(a => a.area_name.toLowerCase().includes(q) || (a.id_number && a.id_number.toLowerCase().includes(q)));
+      }
+      return list;
+    });
+
+    const myTodayAreaHistory = computed(() => {
+      if (!appState.currentUser) return [];
+      const myId = String(appState.currentUser.user_id);
+      return (appState.area_tasks_daily || []).filter(t => 
+        String(t.staff_id) === myId && 
+        t.date === todayStr.value
+      ).reverse();
+    });
+
+    const getAreaShiftsForUser = (areaId) => {
+      if (!appState.currentUser) return [];
+      const myId = String(appState.currentUser.user_id);
+      
+      const shiftIds = (appState.staff_area_tasks || [])
+        .filter(t => String(t.staff_id) === myId && t.area_id === areaId && t.date === todayStr.value)
+        .map(t => t.area_shift_id);
+        
+      return (appState.area_shifts || []).filter(s => shiftIds.includes(s.area_shift_id));
+    };
+
+    const getDailyTaskStatus = (areaId, areaShiftId) => {
+      const report = (appState.area_tasks_daily || []).find(r => 
+        r.area_id === areaId && 
+        r.area_shift_id === areaShiftId && 
+        r.date === todayStr.value
+      );
+      return report ? (report.status || 'Pending') : 'Pending';
+    };
+
+    const getDailyTaskStatusColor = (areaId, areaShiftId) => {
+      const status = getDailyTaskStatus(areaId, areaShiftId).toLowerCase();
+      return status === 'selesai' || status === 'completed' ? 'bg-emerald-500' : 'bg-amber-500';
+    };
+
+    const getDailyTaskStatusBadgeClass = (areaId, areaShiftId) => {
+      const status = getDailyTaskStatus(areaId, areaShiftId).toLowerCase();
+      return status === 'selesai' || status === 'completed' 
+        ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+        : 'bg-amber-50 text-amber-700 border-amber-200';
+    };
+
+    const getAreaName = (id) => {
+      const area = (appState.areas || []).find(a => a.area_id === id);
+      return area ? area.area_name : id;
+    };
+
+    const getShiftName = (id) => {
+      const shift = (appState.area_shifts || []).find(s => s.area_shift_id === id);
+      return shift ? shift.shift_name : id;
+    };
+
+    const getUserName = (id) => {
+      const user = (appState.users || []).find(u => u.user_id === id);
+      return user ? user.name : id;
+    };
+
+    const openAreaChecklist = (area, shift) => {
+      const existing = (appState.area_tasks_daily || []).find(r => 
+        r.area_id === area.area_id && 
+        r.area_shift_id === shift.area_shift_id && 
+        r.date === todayStr.value
+      );
+      
+      selectedAreaTask.value = {
+        area: area,
+        shift: shift,
+        remarks: existing ? (existing.remarks || '') : ''
+      };
+      
+      try {
+        const config = JSON.parse(area.checklist_config || "{}");
+        areaChecklistUiCategories.value = Object.keys(config).map(catName => {
+          const cat = config[catName];
+          const type = cat.type || 'checklist';
+          
+          let completedObj = {};
+          if (existing && existing.tasks_completed) {
+            completedObj = safeParseJSON(existing.tasks_completed, {});
+          }
+          const catVals = completedObj[catName] || {};
+
+          const items = (cat.items || []).map(itemName => {
+            if (type === 'checklist') {
+              return { name: itemName, checked: catVals[itemName] === true };
+            } else if (type === 'inout') {
+              const val = catVals[itemName] || {};
+              return { name: itemName, in: Number(val.in || 0), out: Number(val.out || 0) };
+            } else { // 'in'
+              const val = catVals[itemName] || {};
+              return { name: itemName, in: Number(val.in || 0) };
+            }
+          });
+          
+          return {
+            name: catName,
+            type: type,
+            items: items
+          };
+        });
+      } catch (e) {
+        areaChecklistUiCategories.value = [];
+      }
+    };
+
+    const submitAreaChecklistReport = async () => {
+      const task = selectedAreaTask.value;
+      if (!task) return;
+      
+      const tasksCompleted = {};
+      const linenChanged = [];
+      const refills = [];
+      
+      areaChecklistUiCategories.value.forEach(cat => {
+        tasksCompleted[cat.name] = {};
+        if (cat.type === 'checklist') {
+          cat.items.forEach(item => {
+            tasksCompleted[cat.name][item.name] = item.checked === true;
+          });
+        } else if (cat.type === 'inout') {
+          cat.items.forEach(item => {
+            tasksCompleted[cat.name][item.name] = { in: Number(item.in || 0), out: Number(item.out || 0) };
+            linenChanged.push({
+              item: item.name,
+              in: Number(item.in || 0),
+              out: Number(item.out || 0)
+            });
+          });
+        } else if (cat.type === 'in') {
+          cat.items.forEach(item => {
+            tasksCompleted[cat.name][item.name] = { in: Number(item.in || 0) };
+            refills.push({
+              name: item.name,
+              qty: Number(item.in || 0)
+            });
+          });
+        }
       });
       
-      Swal.fire({
-        icon: 'success',
-        title: 'Dicatat',
-        text: 'Pengambilan barang berhasil ditambahkan ke riwayat.',
-        timer: 1500,
-        showConfirmButton: false
-      });
-      
-      inventoryForm.value = { item: '', qty: 1 };
+      showLoading("Mengirim laporan area...");
+      try {
+        const success = await submitAreaTaskDailyLocal(
+          task.area.area_id,
+          task.shift.area_shift_id,
+          todayStr.value,
+          "selesai",
+          task.remarks || "",
+          tasksCompleted,
+          linenChanged,
+          refills
+        );
+        if (success) {
+          selectedAreaTask.value = null;
+        }
+      } catch (err) {
+        showToast("⚠️ Gagal mengirim: " + err.message, "error");
+      }
     };
 
     return {
@@ -2091,9 +2864,45 @@ createApp({
       removeProjectImage,
       // Misc
       submitLeave,
-      inventoryForm,
-      inventoryHistory,
-      submitInventory
+      // Area Control
+      areaControlTab,
+      areaSearchQuery,
+      selectedAreaTask,
+      areaChecklistUiCategories,
+      myAssignedAreas,
+      myTodayAreaHistory,
+      getAreaShiftsForUser,
+      getDailyTaskStatus,
+      getDailyTaskStatusColor,
+      getDailyTaskStatusBadgeClass,
+      getAreaName,
+      getShiftName,
+      getUserName,
+      openAreaChecklist,
+      submitAreaChecklistReport,
+      // Inventory System (Revisi)
+      appState,
+      invActiveSubTab,
+      inventoryCategoryFilter,
+      inventoryRoomFilter,
+      inventorySearchQuery,
+      logCategoryFilter,
+      logRoomFilter,
+      logPeriodFilter,
+      logDateFilter,
+      logMonthFilter,
+      directTx,
+      txDetailFields,
+      getHkStaffName,
+      getItemById,
+      getCategoryName,
+      getDetailValue,
+      dynamicTableColumns,
+      logDynamicTableColumns,
+      sortedRoomsList,
+      filteredInventoryItems,
+      filteredInventoryTransactions,
+      submitDirectTx
     };
   }
 }).mount('#app');

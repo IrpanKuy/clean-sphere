@@ -5,14 +5,14 @@ const HouseKeepingProjectsView = {
       <!-- HEADER -->
       <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 class="text-xl font-bold text-slate-800">{{ isMasterTab ? 'Master Proyek Rutin' : 'Daftar Tugas Proyek' }}</h2>
+          <h2 class="text-xl font-bold text-slate-800">{{ isMasterTab ? 'Master Proyek Housekeeping' : 'Daftar Tugas Proyek' }}</h2>
           <p class="text-sm text-slate-500 mt-1">
-            {{ isMasterTab ? 'Kelola konfigurasi jadwal proyek rutin untuk staf' : 'Pantau dan tindak lanjuti proyek housekeeping yang telah digenerate' }}
+            {{ isMasterTab ? 'Kelola konfigurasi master proyek housekeeping untuk staf' : 'Pantau dan tindak lanjuti proyek housekeeping yang telah ditugaskan' }}
           </p>
         </div>
         <button v-if="isMasterTab" @click="openMasterModal(null)" class="bg-primary-royal hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 shadow-sm">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-          Buat Proyek Rutin
+          Buat Master Proyek
         </button>
       </div>
 
@@ -32,7 +32,7 @@ const HouseKeepingProjectsView = {
             </thead>
             <tbody class="divide-y divide-slate-100 text-slate-700">
               <tr v-if="masters.length === 0">
-                <td colspan="6" class="px-6 py-12 text-center text-slate-400">Belum ada data master proyek rutin.</td>
+                <td colspan="6" class="px-6 py-12 text-center text-slate-400">Belum ada data master proyek housekeeping.</td>
               </tr>
               <tr v-for="master in masters" :key="master.master_id" class="hover:bg-slate-50/50 transition-colors">
                 <td class="px-6 py-4 font-medium text-slate-900">{{ master.title }}</td>
@@ -71,7 +71,7 @@ const HouseKeepingProjectsView = {
           <select v-model="filterStatus" class="border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:border-primary-royal focus:ring-1 focus:ring-primary-royal">
             <option value="">Semua Status</option>
             <option value="Pending">Pending</option>
-            <option value="Done">Selesai (Menunggu Approve)</option>
+            <option value="Menunggu Persetujuan">Menunggu Persetujuan</option>
             <option value="Approved">Approved</option>
           </select>
         </div>
@@ -81,14 +81,14 @@ const HouseKeepingProjectsView = {
           </div>
           <div v-for="inst in filteredInstances" :key="inst.project_id" class="border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col relative overflow-hidden transition-all hover:shadow-md">
             <div :class="['absolute top-0 left-0 w-1 h-full', 
-                inst.status === 'Pending' ? 'bg-amber-400' : 
-                inst.status === 'Done' ? 'bg-blue-400' : 'bg-green-500']"></div>
+                getProjectStatus(inst) === 'Pending' ? 'bg-amber-400' : 
+                getProjectStatus(inst) === 'Menunggu Persetujuan' ? 'bg-blue-400' : 'bg-green-500']"></div>
             <div class="flex justify-between items-start mb-2">
               <h3 class="font-bold text-slate-800 line-clamp-1">{{ inst.title }}</h3>
               <span :class="['px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider',
-                  inst.status === 'Pending' ? 'bg-amber-100 text-amber-700' : 
-                  inst.status === 'Done' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700']">
-                {{ inst.status }}
+                  getProjectStatus(inst) === 'Pending' ? 'bg-amber-100 text-amber-700' : 
+                  getProjectStatus(inst) === 'Menunggu Persetujuan' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700']">
+                {{ getProjectStatus(inst) }}
               </span>
             </div>
             <p class="text-xs text-slate-500 mb-3 line-clamp-2 min-h-[32px]">{{ inst.description || '-' }}</p>
@@ -128,11 +128,12 @@ const HouseKeepingProjectsView = {
                     <span>Waktu: {{ formatDateTime(sub.submitted_at) }}</span>
                   </div>
 
-                  <!-- Photo display -->
-                  <a v-if="sub.photo_url" :href="sub.photo_url" target="_blank" class="text-[11px] font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1 mt-1">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                    Lihat Bukti Foto
-                  </a>
+                  <!-- Photo display with visual thumbnail -->
+                  <div v-if="sub.photo_url" class="mt-1">
+                    <a :href="sub.photo_url" target="_blank" class="block rounded-lg overflow-hidden border border-slate-200 hover:border-slate-300 hover:shadow transition-all bg-slate-100">
+                       <img :src="getDisplayPhotoUrl(sub.photo_url)" class="max-w-full max-h-[200px] object-contain rounded-lg mx-auto block bg-slate-100" alt="Bukti Laporan">
+                    </a>
+                  </div>
 
                   <!-- Manager action buttons per submission -->
                   <div v-if="sub.status === 'Pending'" class="flex gap-2 mt-2 pt-1.5 border-t border-slate-100">
@@ -154,7 +155,7 @@ const HouseKeepingProjectsView = {
       <div v-if="showMasterModal" class="fixed inset-0 bg-slate-900/50 z-[999] flex justify-center items-center p-4">
         <div class="bg-white rounded-xl shadow-xl w-full max-w-lg flex flex-col max-h-full">
           <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-xl">
-            <h3 class="font-bold text-lg text-slate-800">{{ masterForm.master_id ? 'Edit Master Proyek' : 'Buat Master Proyek Rutin' }}</h3>
+            <h3 class="font-bold text-lg text-slate-800">{{ masterForm.master_id ? 'Edit Master Proyek' : 'Buat Master Proyek' }}</h3>
             <button @click="closeMasterModal" class="text-slate-400 hover:text-slate-600">
               <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
@@ -252,7 +253,7 @@ const HouseKeepingProjectsView = {
         res = res.filter(i => i.date === this.filterDate);
       }
       if (this.filterStatus) {
-        res = res.filter(i => i.status === this.filterStatus);
+        res = res.filter(i => this.getProjectStatus(i) === this.filterStatus);
       }
       return res.sort((a, b) => new Date(b.date) - new Date(a.date));
     }
@@ -333,7 +334,38 @@ const HouseKeepingProjectsView = {
     },
     getSubmissionsForProject(projectId) {
       if (!projectId) return [];
-      return (this.submissions || []).filter(s => String(s.project_id) === String(projectId));
+      const list = (this.submissions || []).filter(s => String(s.project_id) === String(projectId));
+      return list.sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at));
+    },
+    getProjectStatus(proj) {
+      const staffIds = this.getStaffArray(proj.staff_ids);
+      if (staffIds.length === 0) return 'Pending';
+      
+      const subs = this.getSubmissionsForProject(proj.project_id);
+      
+      // Count by submission status
+      let approvedCount = 0;
+      let pendingCount = 0;
+      
+      staffIds.forEach(sId => {
+        const sSub = subs.find(s => String(s.staff_id) === String(sId));
+        if (sSub) {
+          if (sSub.status === 'Approved') {
+            approvedCount++;
+          } else if (sSub.status === 'Pending') {
+            pendingCount++;
+          }
+        }
+      });
+      
+      if (approvedCount === staffIds.length) {
+        return 'Approved';
+      }
+      if (pendingCount > 0) {
+        return 'Menunggu Persetujuan';
+      }
+      
+      return 'Pending';
     },
     approveSubmission(submissionId) {
       if (confirm("Setujui laporan pengajuan ini?")) {
@@ -355,6 +387,14 @@ const HouseKeepingProjectsView = {
       } catch(e) {
         return isoStr;
       }
+    },
+    getDisplayPhotoUrl(url) {
+      if (!url) return '';
+      const match = url.match(/id=([a-zA-Z0-9-_]+)/) || url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+      if (match) {
+        return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w1000`;
+      }
+      return url;
     }
   }
 };

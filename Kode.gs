@@ -39,7 +39,7 @@ function doGet(e) {
     const action = e && e.parameter ? e.parameter.action : null;
     
     if (action === "getAllData") {
-      return createJsonResponse(handleGetAllDataAction());
+      return createJsonResponse(handleGetAllDataAction({ weeks: e.parameter.weeks }));
     }
     
     // Serve HTML Pages
@@ -98,7 +98,7 @@ function doPost(e) {
         result = handleVerifySessionAction(payload);
         break;
       case "getAllData":
-        result = handleGetAllDataAction();
+        result = handleGetAllDataAction(payload);
         break;
       case "clockIn":
         result = handleClockInAction(payload);
@@ -250,6 +250,7 @@ function doPost(e) {
             item_code: payload.item_code,
             category_id: payload.category_id,
             item_name: payload.item_name,
+            location_room: payload.location_room || "Global",
             stock_initial: parseInt(payload.stock_initial, 10) || 0,
             stock_in: 0,
             stock_out: 0,
@@ -284,30 +285,14 @@ function doPost(e) {
       case "updateStaffChecklistAssignments":
         result = handleUpdateStaffChecklistAssignmentsAction(payload);
         break;
+      case "updateStaffAreaAssignments":
+        result = handleUpdateStaffAreaAssignmentsAction(payload);
+        break;
       case "monthlyReset":
         result = handleMonthlyResetAction();
         break;
       case "updateSettings":
-        result = handleUpdateRecord({
-          sheetName: "tb_settings",
-          keyCol: "setting_id",
-          keyValue: "SET1",
-          updates: {
-            api_key: payload.api_key,
-            folder_id: payload.folder_id
-          }
-        });
-        // If not exist, try to create it
-        if (!result.success) {
-            result = handleCreateRecord({
-              sheetName: "tb_settings",
-              record: {
-                setting_id: "SET1",
-                api_key: payload.api_key,
-                folder_id: payload.folder_id
-              }
-            });
-        }
+        result = handleUpdateSettings(payload);
         break;
       case "updateAdminCredentials":
         result = handleUpdateRecord({
@@ -360,17 +345,17 @@ function setupDatabase() {
     "tb_users": ["user_id", "username", "password", "name", "role", "shift_id", "status"],
     "tb_sessions": ["session_token", "user_id", "created_at", "expires_at"],
     "tb_shifts": ["shift_id", "shift_name", "check_in_time", "check_out_time", "pre_check_in_minutes", "pre_check_out_minutes", "is_active"],
-    "tb_attendance": ["attendance_id", "user_id", "shift_id", "date", "check_in_time", "check_out_time", "status", "late_checkout_minutes"],
+    "tb_attendance": ["attendance_id", "user_id", "shift_id", "date", "check_in_time", "check_out_time", "status", "late_checkout_minutes", "kpi_score"],
     "tb_leave_requests": ["request_id", "user_id", "leave_type", "start_date", "end_date", "reason", "proof_url", "status", "approved_by", "approved_at"],
     "tb_settings": ["setting_id", "api_key", "folder_id"],
     "tb_rooms": ["room_number", "room_status", "last_cleaned_at", "last_cleaned_by", "last_updated", "checklist_config", "remarks", "ideal_timer_minutes", "room_inventory"],
     "tb_room_assignments": ["assignment_id", "date", "room_number", "staff_id", "target_status_from", "target_status_to", "remarks", "status"],
     "tb_room_status_history": ["history_id", "room_number", "old_status", "new_status", "changed_by", "timestamp", "duration_minutes", "ideal_timer_minutes", "kpi_score"],
     "tb_room_statuses": ["status_id", "status_code", "status_name", "color_hex", "description", "is_active"],
-    "tb_areas": ["area_id", "area_name", "id_number", "shift_ids"],
+    "tb_areas": ["area_id", "area_name", "id_number", "shift_ids", "checklist_config"],
     "tb_area_shifts": ["area_shift_id", "shift_name", "start_time", "end_time"],
-    "tb_staff_area_tasks": ["task_id", "area_id", "area_shift_id", "staff_id"],
-    "tb_area_tasks_daily": ["task_daily_id", "area_id", "area_shift_id", "staff_id", "date", "status", "remarks", "updated_by", "updated_at"],
+    "tb_staff_area_tasks": ["task_id", "area_id", "area_shift_id", "staff_id", "date", "status"],
+    "tb_area_tasks_daily": ["task_daily_id", "area_id", "area_shift_id", "staff_id", "date", "status", "remarks", "updated_by", "updated_at", "tasks_completed", "linen_changed", "refills"],
     "tb_inventory_categories": ["category_id", "category_name", "description", "default_attributes", "is_active"],
     "tb_checklist_master": ["task_id", "task_name", "task_type", "description", "is_active"],
     "tb_staff_checklist_assignments": ["assignment_id", "user_id", "task_id", "is_enabled"],
@@ -379,8 +364,8 @@ function setupDatabase() {
     "tb_housekeeping_projects": ["project_id", "master_id", "title", "description", "type", "staff_ids", "date", "ideal_time", "status"],
     "tb_housekeeping_submissions": ["submission_id", "project_id", "staff_id", "description", "photo_url", "submitted_at", "status", "kpi_score", "approved_by", "approved_at"],
     "tb_staff_work_projects": ["work_project_id", "title", "description", "period", "staff_id", "photo_url", "date"],
-    "tb_inventory": ["item_id", "item_code", "category_id", "item_name", "stock_initial", "stock_in", "stock_out", "stock_current", "min_stock", "detail_spesifik", "remarks"],
-    "tb_inventory_transactions": ["transaction_id", "item_id", "user_id", "type", "quantity", "date", "timestamp", "remarks"]
+    "tb_inventory": ["item_id", "item_code", "category_id", "item_name", "location_room", "stock_initial", "stock_in", "stock_out", "stock_current", "min_stock", "detail_spesifik", "remarks"],
+    "tb_inventory_transactions": ["transaction_id", "item_id", "user_id", "type", "quantity", "location_room", "date", "timestamp", "remarks"]
   };
   
   const created = [];
@@ -418,7 +403,21 @@ function setupDatabase() {
     seedSheetData("tb_settings");
     if (!updated.includes("tb_settings")) updated.push("tb_settings");
   }
-  
+  // Clean up any known malformed dummy rows (like the old PRJ001)
+  const projectsSheet = ss.getSheetByName("tb_housekeeping_projects");
+  if (projectsSheet) {
+    const data = getSheetData("tb_housekeeping_projects");
+    const badRow = data.find(p => p.project_id === "PRJ001" && String(p.type).includes("USR"));
+    if (badRow) {
+      const rowInfo = findRowInSheet("tb_housekeeping_projects", "project_id", "PRJ001");
+      if (rowInfo) {
+        projectsSheet.deleteRow(rowInfo._rowNum);
+      }
+      seedSheetData("tb_housekeeping_projects");
+      if (!updated.includes("tb_housekeeping_projects")) updated.push("tb_housekeeping_projects");
+    }
+  }
+
   ss.setSpreadsheetTimeZone("Asia/Jakarta");
   
   let msg = "Basis data CleanSphere Pro berhasil dikonfigurasi.";
@@ -440,13 +439,14 @@ function seedSheetData(name) {
   const sheet = ss.getSheetByName(name);
   if (!sheet) return;
   
-  const defaultHash = "b4f41429071c948a6a12288f667f47fdf3c6be365164fc5d0d1ff45874096218"; // SHA-256 for CleanSphere2026!
+ // SHA-256 untuk password123: ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f
+const defaultHash = "ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f"; 
   
-  if (name === "tb_users") {
-    sheet.appendRow(["USR001", "admin", defaultHash, "Manager CleanSphere", "manager", "S1", "active"]);
-    sheet.appendRow(["USR002", "budi", defaultHash, "Budi Santoso", "staff", "S1", "active"]);
-    sheet.appendRow(["USR003", "siti", defaultHash, "Siti Rahma", "staff", "S2", "active"]);
-  } 
+if (name === "tb_users") {
+  sheet.appendRow(["USR001", "admin", defaultHash, "Manager CleanSphere", "manager", "S1", "active"]);
+  sheet.appendRow(["USR002", "budi", defaultHash, "Budi Santoso", "staff", "S1", "active"]);
+  sheet.appendRow(["USR003", "siti", defaultHash, "Siti Rahma", "staff", "S2", "active"]);
+}
   else if (name === "tb_sessions") {
     const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
     sheet.appendRow(["SES001-DUMMY", "USR001", new Date().toISOString(), expires]);
@@ -457,7 +457,7 @@ function seedSheetData(name) {
     sheet.appendRow(["S3", "Malam", "23:00", "07:00", 50, 30, true]);
   } 
   else if (name === "tb_attendance") {
-    sheet.appendRow(["ATT001", "USR002", "S1", "2026-07-09", "06:45", "15:05", "out", 0]);
+    sheet.appendRow(["ATT001", "USR002", "S1", "2026-07-09", "06:45", "15:05", "out", 0, 100]);
   }
   else if (name === "tb_leave_requests") {
     sheet.appendRow(["LVR001", "USR003", "sakit", "2026-07-10", "2026-07-11", "Demam tinggi", "", "pending", "", ""]);
@@ -543,8 +543,22 @@ function seedSheetData(name) {
     statuses.forEach(row => sheet.appendRow(row));
   } 
   else if (name === "tb_areas") {
-    sheet.appendRow(["AR001", "Lobby Utama", "A1", "SH_M,SH_E"]);
-    sheet.appendRow(["AR002", "Toilet Lobby", "A2", "SH_M,SH_E,SH_N"]);
+    const defaultConfig = JSON.stringify({
+      "Cleaning": {
+        "type": "checklist",
+        "items": ["Trash", "Floor", "Toilet"]
+      },
+      "Change": {
+        "type": "inout",
+        "items": ["Linen"]
+      },
+      "Refill": {
+        "type": "in",
+        "items": ["Soap", "Tissue"]
+      }
+    });
+    sheet.appendRow(["AR001", "Lobby Utama", "A1", "SH_M,SH_E", defaultConfig]);
+    sheet.appendRow(["AR002", "Toilet Lobby", "A2", "SH_M,SH_E,SH_N", defaultConfig]);
   }
   else if (name === "tb_area_shifts") {
     sheet.appendRow(["SH_M", "Morning", "08:00", "16:00"]);
@@ -552,8 +566,9 @@ function seedSheetData(name) {
     sheet.appendRow(["SH_N", "Night", "00:00", "08:00"]);
   }
   else if (name === "tb_staff_area_tasks") {
-    sheet.appendRow(["SAT001", "AR001", "SH_M", "USR002"]);
-    sheet.appendRow(["SAT002", "AR002", "SH_E", "USR003"]);
+    const todayStr = Utilities.formatDate(new Date(), "Asia/Jakarta", "yyyy-MM-dd");
+    sheet.appendRow(["SAT001", "AR001", "SH_M", "USR002", todayStr, "pending"]);
+    sheet.appendRow(["SAT002", "AR002", "SH_E", "USR003", todayStr, "pending"]);
   }
   else if (name === "tb_area_tasks_daily") {
     sheet.appendRow(["ATD001", "AR001", "SH_M", "USR002", "2026-07-10", "Centang", "Sapu bersih", "USR002", "2026-07-10T09:00:00.000Z"]);
@@ -594,21 +609,24 @@ function seedSheetData(name) {
     sheet.appendRow(["CKR003", "102", "USR003", "2026-07-10", "2026-07-10T08:10:00.000Z", "2026-07-10T08:30:00.000Z", 20, tasksSeed, changeSeed, refillSeed, "Completed", 92.5]);
     sheet.appendRow(["CKR004", "101", "USR002", "2026-07-09", "2026-07-09T07:45:00.000Z", "2026-07-09T08:00:00.000Z", 15, tasksSeed, changeSeed, refillSeed, "Completed", 85.0]);
   }
+  else if (name === "tb_housekeeping_project_master") {
+    sheet.appendRow(["MAS001", "Pembersihan Kaca Fasad Luar", "Pembersihan kaca depan lobby luar", "Weekly", JSON.stringify(["USR002"]), "2026-07-09", "2026-07-09", "14:00", true]);
+  }
   else if (name === "tb_housekeeping_projects") {
-    sheet.appendRow(["PRJ001", "Pembersihan Kaca Fasad Luar", "Pembersihan kaca depan lobby luar", "Mingguan", "USR002", "", "2026-07-09", "Pending", "", ""]);
+    sheet.appendRow(["PRJ001", "MAS001", "Pembersihan Kaca Fasad Luar", "Pembersihan kaca depan lobby luar", "Weekly", JSON.stringify(["USR002"]), "2026-07-09", "14:00", "Pending"]);
   }
   else if (name === "tb_staff_work_projects") {
     sheet.appendRow(["WPRJ001", "Pembersihan Taman Samping", "Pembersihan rumput liar dan daun kering", "Mingguan", "USR002", "", "2026-07-10"]);
   }
   else if (name === "tb_inventory") {
-    sheet.appendRow(["INV001", "BRG001", "CAT001", "Sprei Single Bed", 100, 10, 5, 105, 20, JSON.stringify({"Brand":"Kingkoil","Material":"Katun","Ukuran":"Single"}), "Sprei katun putih single"]);
-    sheet.appendRow(["INV002", "BRG002", "CAT002", "Multi Purpose Cleaner", 50, 5, 2, 53, 10, JSON.stringify({"Brand":"Vixal","Volume":"1L","Jenis":"Serbaguna"}), "Pembersih serbaguna 1L"]);
-    sheet.appendRow(["INV003", "BRG003", "CAT004", "Tisu Toilet Roll", 200, 50, 15, 235, 50, JSON.stringify({"Brand":"Paseo","Isi":"6 Roll","Varian":"Emboss"}), "Tisu toilet gulung standard"]);
-    sheet.appendRow(["INV004", "BRG004", "CAT004", "Sabun Cair Handwash", 80, 20, 8, 92, 15, JSON.stringify({"Brand":"Lifebuoy","Isi":"500ml","Varian":"Fresh"}), "Sabun cuci tangan botol"]);
+    sheet.appendRow(["INV001", "BRG001", "CAT001", "Sprei Single Bed", "101", 100, 10, 5, 105, 20, JSON.stringify({"Brand":"Kingkoil","Material":"Katun","Ukuran":"Single"}), "Sprei katun putih single"]);
+    sheet.appendRow(["INV002", "BRG002", "CAT002", "Multi Purpose Cleaner", "Global", 50, 5, 2, 53, 10, JSON.stringify({"Brand":"Vixal","Volume":"1L","Jenis":"Serbaguna"}), "Pembersih serbaguna 1L"]);
+    sheet.appendRow(["INV003", "BRG003", "CAT004", "Tisu Toilet Roll", "102", 200, 50, 15, 235, 50, JSON.stringify({"Brand":"Paseo","Isi":"6 Roll","Varian":"Emboss"}), "Tisu toilet gulung standard"]);
+    sheet.appendRow(["INV004", "BRG004", "CAT004", "Sabun Cair Handwash", "Global", 80, 20, 8, 92, 15, JSON.stringify({"Brand":"Lifebuoy","Isi":"500ml","Varian":"Fresh"}), "Sabun cuci tangan botol"]);
   }
   else if (name === "tb_inventory_transactions") {
-    sheet.appendRow(["TX001", "INV001", "USR001", "in", 10, "2026-07-09", "2026-07-09T07:30:00.000Z", "Restock vendor"]);
-    sheet.appendRow(["TX002", "INV001", "USR002", "out", 5, "2026-07-09", "2026-07-09T08:00:00.000Z", "Dipakai di kamar"]);
+    sheet.appendRow(["TX001", "INV001", "USR001", "in", 10, "Global", "2026-07-09", "2026-07-09T07:30:00.000Z", "Restock vendor"]);
+    sheet.appendRow(["TX002", "INV001", "USR002", "out", 5, "101", "2026-07-09", "2026-07-09T08:00:00.000Z", "Dipakai di kamar"]);
   }
 }
 
@@ -882,32 +900,74 @@ function handleVerifySessionAction(payload) {
 /**
  * Retrieves all tables data for populating client data.js
  */
-function handleGetAllDataAction() {
+function handleGetAllDataAction(payload) {
+  const weeks = payload && payload.weeks ? payload.weeks : "all";
+  
+  let attendance = getSheetData("tb_attendance");
+  let leave_requests = getSheetData("tb_leave_requests");
+  let room_assignments = getSheetData("tb_room_assignments");
+  let room_status_history = getSheetData("tb_room_status_history");
+  let room_checklist = getSheetData("tb_room_checklist");
+  let staff_area_tasks = getSheetData("tb_staff_area_tasks");
+  let area_tasks_daily = getSheetData("tb_area_tasks_daily");
+  let housekeeping_projects = getSheetData("tb_housekeeping_projects");
+  let housekeeping_submissions = getSheetData("tb_housekeeping_submissions");
+  let staff_work_projects = getSheetData("tb_staff_work_projects");
+  let inventory_transactions = getSheetData("tb_inventory_transactions");
+
+  if (weeks !== "all") {
+    const numWeeks = parseInt(weeks, 10);
+    if (!isNaN(numWeeks)) {
+      const msLimit = numWeeks * 7 * 24 * 60 * 60 * 1000;
+      const cutoffDate = new Date(new Date().getTime() - msLimit);
+      
+      const filterByDate = (list, dateColName) => {
+        return list.filter(row => {
+          if (!row[dateColName]) return true; 
+          const d = new Date(row[dateColName]);
+          return isNaN(d.getTime()) || d >= cutoffDate;
+        });
+      };
+
+      attendance = filterByDate(attendance, "date");
+      leave_requests = filterByDate(leave_requests, "start_date");
+      room_assignments = filterByDate(room_assignments, "date");
+      room_status_history = filterByDate(room_status_history, "timestamp");
+      room_checklist = filterByDate(room_checklist, "date");
+      staff_area_tasks = filterByDate(staff_area_tasks, "date");
+      area_tasks_daily = filterByDate(area_tasks_daily, "date");
+      housekeeping_projects = filterByDate(housekeeping_projects, "date");
+      housekeeping_submissions = filterByDate(housekeeping_submissions, "submitted_at");
+      staff_work_projects = filterByDate(staff_work_projects, "date");
+      inventory_transactions = filterByDate(inventory_transactions, "date");
+    }
+  }
+
   return {
     success: true,
     users: getSheetData("tb_users"),
     shifts: getSheetData("tb_shifts"),
-    attendance: getSheetData("tb_attendance"),
-    leave_requests: getSheetData("tb_leave_requests"),
+    attendance: attendance,
+    leave_requests: leave_requests,
     settings: getSheetData("tb_settings"),
     rooms: getSheetData("tb_rooms"),
-    room_assignments: getSheetData("tb_room_assignments"),
-    room_status_history: getSheetData("tb_room_status_history"),
+    room_assignments: room_assignments,
+    room_status_history: room_status_history,
     room_statuses: getSheetData("tb_room_statuses"),
     areas: getSheetData("tb_areas"),
     area_shifts: getSheetData("tb_area_shifts"),
-    staff_area_tasks: getSheetData("tb_staff_area_tasks"),
-    area_tasks_daily: getSheetData("tb_area_tasks_daily"),
+    staff_area_tasks: staff_area_tasks,
+    area_tasks_daily: area_tasks_daily,
     inventory_categories: getSheetData("tb_inventory_categories"),
     checklist_master: getSheetData("tb_checklist_master"),
     staff_checklist_assignments: getSheetData("tb_staff_checklist_assignments"),
-    room_checklist: getSheetData("tb_room_checklist"),
+    room_checklist: room_checklist,
     housekeeping_project_master: getSheetData("tb_housekeeping_project_master"),
-    housekeeping_projects: getSheetData("tb_housekeeping_projects"),
-    housekeeping_submissions: getSheetData("tb_housekeeping_submissions"),
-    staff_work_projects: getSheetData("tb_staff_work_projects"),
+    housekeeping_projects: housekeeping_projects,
+    housekeeping_submissions: housekeeping_submissions,
+    staff_work_projects: staff_work_projects,
     inventory: getSheetData("tb_inventory"),
-    inventory_transactions: getSheetData("tb_inventory_transactions")
+    inventory_transactions: inventory_transactions
   };
 }
 
@@ -1064,14 +1124,23 @@ function handleClockOutAction(payload) {
   const checkInMins = timeToMinutes(attRecord.check_in_time);
   const shiftInMins = timeToMinutes(shift.check_in_time);
   let finalStatus = "hadir";
+  let lateMins = 0;
   if (checkInMins > shiftInMins) {
     finalStatus = "terlambat";
+    lateMins = checkInMins - shiftInMins;
+  }
+  
+  // Calculate attendance KPI score based on late arrival minutes
+  let kpi = 100;
+  if (finalStatus === "terlambat") {
+    kpi = Math.max(0, 100 - (lateMins * 2));
   }
   
   updateRowInSheet("tb_attendance", "attendance_id", attRecord.attendance_id, {
     check_out_time: time,
     status: finalStatus,
-    late_checkout_minutes: lateMinutes
+    late_checkout_minutes: lateMinutes,
+    kpi_score: kpi
   });
   
   let successMsg = "Clock-Out berhasil dicatat pada pukul " + time + ". Status kehadiran: " + finalStatus + ".";
@@ -1117,21 +1186,14 @@ function saveFileToDrive(base64Data, filename) {
       console.warn("Gagal mengambil folder_id dari tb_settings: " + e.toString());
     }
     
-    if (folderId) {
-      try {
-        folder = DriveApp.getFolderById(folderId);
-      } catch (err) {
-        console.warn("Folder ID dari tb_settings tidak valid, fallback ke default. Error: " + err.toString());
-      }
+    if (!folderId) {
+      throw new Error("Folder ID Google Drive belum dikonfigurasi di tb_settings / Pengaturan.");
     }
     
-    if (!folder) {
-      const folders = DriveApp.getFoldersByName("CleanSphere_Proof_Files");
-      if (folders.hasNext()) {
-        folder = folders.next();
-      } else {
-        folder = DriveApp.createFolder("CleanSphere_Proof_Files");
-      }
+    try {
+      folder = DriveApp.getFolderById(folderId);
+    } catch (err) {
+      throw new Error("Gagal mengakses folder Google Drive dengan ID '" + folderId + "'. Pastikan ID Folder benar dan Drive API telah memberikan izin akses. Detail: " + err.toString());
     }
     
     const file = folder.createFile(blob);
@@ -1425,6 +1487,10 @@ function handleSubmitAreaTaskDailyAction(payload) {
   const status = payload.status;
   const remarks = payload.remarks || payload.notes || "";
   
+  const tasksCompleted = typeof payload.tasksCompleted === "string" ? payload.tasksCompleted : JSON.stringify(payload.tasksCompleted || {});
+  const linenChanged = typeof payload.linenChanged === "string" ? payload.linenChanged : JSON.stringify(payload.linenChanged || []);
+  const refills = typeof payload.refills === "string" ? payload.refills : JSON.stringify(payload.refills || []);
+  
   if (!staffId || !date || !status) {
     return { success: false, message: "Parameter checklist area publik tidak lengkap." };
   }
@@ -1447,7 +1513,10 @@ function handleSubmitAreaTaskDailyAction(payload) {
       status: status,
       remarks: remarks,
       updated_by: staffId,
-      updated_at: nowISO
+      updated_at: nowISO,
+      tasks_completed: tasksCompleted,
+      linen_changed: linenChanged,
+      refills: refills
     });
     return { success: true, message: "Checklist area publik diperbarui." };
   } else {
@@ -1469,8 +1538,29 @@ function handleSubmitAreaTaskDailyAction(payload) {
       status: status,
       remarks: remarks,
       updated_by: staffId,
-      updated_at: nowISO
+      updated_at: nowISO,
+      tasks_completed: tasksCompleted,
+      linen_changed: linenChanged,
+      refills: refills
     });
+    
+    // Update matching row in tb_staff_area_tasks to selesai
+    const resolvedId = resolvedAreaId || areaId;
+    if (resolvedId && areaShiftId && staffId && date) {
+      const assignments = getSheetData("tb_staff_area_tasks");
+      const matchingAssign = assignments.find(row => 
+        row.area_id === resolvedId && 
+        row.area_shift_id === areaShiftId && 
+        row.staff_id === staffId && 
+        row.date === date
+      );
+      if (matchingAssign) {
+        updateRowInSheet("tb_staff_area_tasks", "task_id", matchingAssign.task_id, {
+          status: "selesai"
+        });
+      }
+    }
+
     return { success: true, message: "Checklist area publik berhasil direkam." };
   }
 }
@@ -1485,6 +1575,7 @@ function handleAddInventoryTransactionAction(payload) {
   const quantity = parseInt(payload.quantity, 10);
   const date = payload.date;
   const remarks = payload.remarks || "";
+  const locationRoom = payload.locationRoom || "Global";
   
   if (!itemId || !userId || !type || isNaN(quantity) || !date) {
     return { success: false, message: "Parameter transaksi inventaris tidak lengkap." };
@@ -1509,6 +1600,7 @@ function handleAddInventoryTransactionAction(payload) {
     user_id: userId,
     type: type,
     quantity: quantity,
+    location_room: locationRoom,
     date: date,
     timestamp: timestampISO,
     remarks: remarks
@@ -1678,13 +1770,49 @@ function handleApproveHousekeepingSubmissionAction(payload) {
     return { success: false, message: "Laporan pengajuan tidak ditemukan." };
   }
   
-  // If approved, update main project status to Approved
+  // Update main project status based on all submissions for this project
   const submissions = getSheetData("tb_housekeeping_submissions");
   const sub = submissions.find(s => s.submission_id === submissionId);
-  if (sub && status === "Approved") {
-    updateRowInSheet("tb_housekeeping_projects", "project_id", sub.project_id, {
-      status: "Approved"
-    });
+  if (sub) {
+    const projects = getSheetData("tb_housekeeping_projects");
+    const proj = projects.find(p => p.project_id === sub.project_id);
+    if (proj) {
+      // Get all staff assigned
+      let staffIds = [];
+      try {
+        staffIds = JSON.parse(proj.staff_ids);
+      } catch(e) {
+        staffIds = String(proj.staff_ids).split(',').map(s => s.trim());
+      }
+      
+      // Get all submissions for this project
+      const projSubs = submissions.filter(s => s.project_id === proj.project_id);
+      
+      // Check if all assigned staff have approved submissions
+      let allApproved = true;
+      let hasPending = false;
+      
+      staffIds.forEach(sId => {
+        const sSub = projSubs.find(s => String(s.staff_id) === String(sId));
+        if (!sSub || sSub.status !== "Approved") {
+          allApproved = false;
+        }
+        if (sSub && sSub.status === "Pending") {
+          hasPending = true;
+        }
+      });
+      
+      let newProjStatus = "Pending";
+      if (allApproved) {
+        newProjStatus = "Approved";
+      } else if (hasPending) {
+        newProjStatus = "Done"; // Done represents "Menunggu Persetujuan"
+      }
+      
+      updateRowInSheet("tb_housekeeping_projects", "project_id", proj.project_id, {
+        status: newProjStatus
+      });
+    }
   }
   
   return { success: true, message: "Laporan pengajuan telah " + (status === "Approved" ? "disetujui." : "ditolak.") };
@@ -1779,7 +1907,71 @@ function handleCreateRecord(payload) {
   }
 
   appendRowToSheet(sheetName, record);
-  return { success: true, message: "Data baru berhasil ditambahkan." };
+  
+  if (sheetName === "tb_housekeeping_project_master") {
+    syncHousekeepingProjectInstance(record);
+    return {
+      success: true,
+      message: "Data baru berhasil ditambahkan.",
+      record: record,
+      updated_masters: getSheetData("tb_housekeeping_project_master"),
+      updated_projects: getSheetData("tb_housekeeping_projects")
+    };
+  }
+  
+  return { success: true, message: "Data baru berhasil ditambahkan.", record: record };
+}
+
+function syncHousekeepingProjectInstance(masterRecord) {
+  const ss = getSpreadsheet();
+  const projectsSheet = ss.getSheetByName("tb_housekeeping_projects");
+  if (!projectsSheet) return;
+  
+  const projects = getSheetData("tb_housekeeping_projects");
+  const todayStr = Utilities.formatDate(new Date(), ss.getSpreadsheetTimeZone(), "yyyy-MM-dd");
+  
+  if (String(masterRecord.is_active) === "false") {
+    // If master is deactivated, find and remove pending instance if it exists
+    const pendingInst = projects.find(p => p.master_id === masterRecord.master_id && p.status === "Pending");
+    if (pendingInst) {
+      const rowInfo = findRowInSheet("tb_housekeeping_projects", "project_id", pendingInst.project_id);
+      if (rowInfo) {
+        const sheet = getSheet("tb_housekeeping_projects");
+        sheet.deleteRow(rowInfo._rowNum);
+      }
+    }
+    return;
+  }
+  
+  const targetDate = masterRecord.start_date || todayStr;
+  let existing = projects.find(p => p.master_id === masterRecord.master_id && p.date === targetDate);
+  if (!existing) {
+    existing = projects.find(p => p.master_id === masterRecord.master_id && p.status === "Pending");
+  }
+  
+  if (existing) {
+    if (existing.status === "Pending") {
+      updateRowInSheet("tb_housekeeping_projects", "project_id", existing.project_id, {
+        title: masterRecord.title,
+        description: masterRecord.description,
+        type: masterRecord.period_type,
+        staff_ids: masterRecord.staff_ids,
+        ideal_time: masterRecord.ideal_time || ""
+      });
+    }
+  } else {
+    appendRowToSheet("tb_housekeeping_projects", {
+      project_id: "PRJ" + Utilities.getUuid().substring(0, 8).toUpperCase(),
+      master_id: masterRecord.master_id,
+      title: masterRecord.title,
+      description: masterRecord.description,
+      type: masterRecord.period_type,
+      staff_ids: masterRecord.staff_ids,
+      date: targetDate,
+      ideal_time: masterRecord.ideal_time || "",
+      status: "Pending"
+    });
+  }
 }
 
 function handleUpdateRecord(payload) {
@@ -1831,6 +2023,20 @@ function handleUpdateRecord(payload) {
   
   const success = updateRowInSheet(sheetName, keyCol, keyValue, updates);
   if (!success) return { success: false, message: "Data tidak ditemukan." };
+  
+  if (sheetName === "tb_housekeeping_project_master") {
+    const master = findRowInSheet("tb_housekeeping_project_master", "master_id", keyValue);
+    if (master) {
+      syncHousekeepingProjectInstance(master);
+    }
+    return {
+      success: true,
+      message: "Data berhasil diperbarui.",
+      updated_masters: getSheetData("tb_housekeeping_project_master"),
+      updated_projects: getSheetData("tb_housekeeping_projects")
+    };
+  }
+  
   return { success: true, message: "Data berhasil diperbarui." };
 }
 
@@ -2062,7 +2268,8 @@ function handleGenerateDailyDataAction(payload) {
     attendance.forEach(a => {
       if ((a.status === "pending" || a.status === "belum_absen") && a.date !== todayStr) {
         updateRowInSheet("tb_attendance", "attendance_id", a.attendance_id, {
-          status: "alpha"
+          status: "alpha",
+          kpi_score: 0
         });
       }
     });
@@ -2078,7 +2285,8 @@ function handleGenerateDailyDataAction(payload) {
           check_in_time: "",
           check_out_time: "",
           status: "belum_absen",
-          late_checkout_minutes: 0
+          late_checkout_minutes: 0,
+          kpi_score: ""
         });
         stats.attendance++;
       }
@@ -2126,7 +2334,10 @@ function handleGenerateDailyDataAction(payload) {
           status: "Pending",
           remarks: "",
           updated_by: "",
-          updated_at: ""
+          updated_at: "",
+          tasks_completed: "{}",
+          linen_changed: "[]",
+          refills: "[]"
         });
         stats.area_tasks++;
       }
@@ -2196,4 +2407,82 @@ function handleGenerateDailyDataAction(payload) {
   } catch (err) {
     return { success: false, message: "Gagal generate data harian: " + err.toString() };
   }
+}
+
+/**
+ * Updates staff area task assignments by deleting existing tasks for the area and adding new ones.
+ */
+function handleUpdateStaffAreaAssignmentsAction(payload) {
+  const areaId = payload.areaId;
+  const shiftIds = payload.shiftIds || [];
+  const staffIds = payload.staffIds || [];
+  
+  if (!areaId) return { success: false, message: "Area ID wajib disertakan." };
+  
+  const ss = getSpreadsheet();
+  const sheet = ss.getSheetByName("tb_staff_area_tasks");
+  if (!sheet) return { success: false, message: "Tabel tb_staff_area_tasks tidak ditemukan." };
+  
+  // 1. Delete existing rows for this areaId
+  const lastRow = sheet.getLastRow();
+  if (lastRow > 1) {
+    const data = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const areaColIdx = headers.indexOf("area_id");
+    
+    // Iterate from bottom to top to safely delete rows
+    for (let i = data.length - 1; i >= 0; i--) {
+      if (data[i][areaColIdx] === areaId) {
+        sheet.deleteRow(i + 2);
+      }
+    }
+  }
+  
+  // 2. Add new records for each shift and staff combination
+  shiftIds.forEach(shiftId => {
+    staffIds.forEach(staffId => {
+      const taskId = "SAT" + Utilities.getUuid().substring(0, 8).toUpperCase();
+      const todayStr = Utilities.formatDate(new Date(), "Asia/Jakarta", "yyyy-MM-dd");
+      appendRowToSheet("tb_staff_area_tasks", {
+        task_id: taskId,
+        area_id: areaId,
+        area_shift_id: shiftId,
+        staff_id: staffId,
+        date: todayStr,
+        status: "pending"
+      });
+    });
+  });
+  
+  return { 
+    success: true, 
+    message: "Penugasan staf area berhasil diperbarui.",
+    updated_assignments: getSheetData("tb_staff_area_tasks")
+  };
+}
+
+function handleUpdateSettings(payload) {
+  const ss = getSpreadsheet();
+  const sheet = ss.getSheetByName("tb_settings");
+  if (!sheet) return { success: false, message: "Sheet tb_settings tidak ditemukan." };
+  
+  if (sheet.getLastRow() < 2) {
+    if (sheet.getLastRow() === 0) {
+      sheet.appendRow(["setting_id", "api_key", "folder_id"]);
+    }
+    sheet.appendRow(["SET001", payload.api_key || "", payload.folder_id || ""]);
+  } else {
+    sheet.getRange(2, 2).setValue(payload.api_key || "");
+    sheet.getRange(2, 3).setValue(payload.folder_id || "");
+  }
+  
+  return {
+    success: true,
+    message: "Pengaturan sistem berhasil diperbarui.",
+    record: {
+      setting_id: sheet.getRange(2, 1).getValue() || "SET001",
+      api_key: payload.api_key || "",
+      folder_id: payload.folder_id || ""
+    }
+  };
 }

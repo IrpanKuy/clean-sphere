@@ -77,6 +77,10 @@ const RoomManagementView = {
       const cfg = this.statusConfig[status];
       return cfg ? cfg.color : '#E2E8F0';
     },
+    getStatusTextColor(status) {
+      const cfg = this.statusConfig[status];
+      return cfg ? (cfg.text || '#FFFFFF') : '#1E293B';
+    },
     getStatusName(status) {
       const cfg = this.statusConfig[status];
       return cfg ? cfg.name : status;
@@ -303,14 +307,14 @@ const RoomManagementView = {
                     <select 
                       :value="room.room_status" 
                       @change="e => { quickRoomNumber = room.room_number; quickStatus = e.target.value; quickRemarks = room.remarks; submitQuickChange(); }"
-                      class="w-full appearance-none px-3 py-1.5 rounded-lg text-[12px] font-bold text-white tracking-wide uppercase shadow-sm cursor-pointer border-none outline-none focus:ring-2 focus:ring-slate-300 transition-all"
-                      :style="{ backgroundColor: getStatusColor(room.room_status) }"
+                      class="w-full appearance-none px-3 py-1.5 rounded-lg text-[12px] font-bold tracking-wide uppercase shadow-sm cursor-pointer border-none outline-none focus:ring-2 focus:ring-slate-300 transition-all"
+                      :style="{ backgroundColor: getStatusColor(room.room_status), color: getStatusTextColor(room.room_status) }"
                     >
                       <option v-for="(cfg, code) in statusConfig" :key="code" :value="code" class="bg-white text-slate-800">
                         {{ code }} - {{ cfg.name }}
                       </option>
                     </select>
-                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-white">
+                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2" :style="{ color: getStatusTextColor(room.room_status) }">
                       <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
                     </div>
                   </div>
