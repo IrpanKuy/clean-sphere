@@ -92,7 +92,7 @@
 
         <div class="flex items-center gap-4">
           <button v-if="currentUser && (currentUser.role === 'admin' || currentUser.role === 'manager')"
-            @click="generateDailyDataLocal"
+            @click="handleGenerateDailyData"
             class="px-3 md:px-4.5 py-2.5 text-[13px] font-semibold bg-indigo-50 border-1.5 border-indigo-500/20 rounded-lg text-indigo-700 cursor-pointer flex items-center gap-2 transition-all duration-200 hover:bg-indigo-100 hover:-translate-y-[1px]">
             <svg class="w-4 h-4 text-indigo-700" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round"
@@ -519,6 +519,10 @@
           }
         };
 
+        const handleGenerateDailyData = async () => {
+          await generateDailyDataLocal();
+        };
+
         // Check login on startup
         onMounted(async () => {
           const loggedIn = await checkAutoLogin();
@@ -561,6 +565,7 @@
           getMenuTitle,
           syncDataGlobal,
           handleLogout,
+          handleGenerateDailyData,
 
           // Room operations
           handleQuickUpdateStatus,

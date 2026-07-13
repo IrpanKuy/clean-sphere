@@ -8,7 +8,7 @@
 
 // --- CONFIGURATION ---
 // REPLACE THIS URL with your deployed Google Apps Script Web App URL
-var GAS_URL = "https://script.google.com/macros/s/AKfycbydmCL10jaE3WjRLBBsVPzpECKYnD25zsgyEHMjRhdLbEnmRfcX0eXj5t5QwHE0_niGEQ/exec";
+var GAS_URL = "https://script.google.com/macros/s/AKfycbzmLupueYOJwWUhcDSj_XMPs17TyQNIbIwG32FGOiZzDU0bis2bA-Sjk5Uqy9pVpaQcEg/exec";
 
 // --- GLOBAL VARIABLES (STATE CONTAINER) ---
 var appState = Vue.reactive({
@@ -47,6 +47,18 @@ var appState = Vue.reactive({
 });
 
 // --- CORE UTILITY FUNCTIONS ---
+
+function calculateMinutesBetween(startStr, endStr) {
+    const timeToMins = (str) => {
+        const clean = String(str).replace('.', ':');
+        const parts = clean.split(':');
+        return parseInt(parts[0], 10) * 60 + (parseInt(parts[1], 10) || 0);
+    };
+    let s = timeToMins(startStr);
+    let e = timeToMins(endStr);
+    if (e < s) e += 1440; // overnight
+    return e - s;
+}
 
 /**
  * Encrypts password using native Web Crypto API SHA-256
@@ -139,7 +151,7 @@ function compressImage(file, maxWidth = 1280, quality = 0.7) {
  */
 function showToast(message, type = "success") {
     console.log(`[Toast ${type}] ${message}`);
-    
+
     if (typeof Swal !== 'undefined') {
         if (type === "pending") {
             Swal.fire({
@@ -195,9 +207,11 @@ function hideLoading() {
 /**
  * Fetches all spreadsheet tables and populates appState
  */
-async function fetchDataFromServer() {
+async function fetchDataFromServer(skipSwal = false) {
     appState.syncing = true;
-    showToast("⏳ Sinkronisasi data basis data...", "pending");
+    if (!skipSwal) {
+        showToast("⏳ Sinkronisasi data basis data...", "pending");
+    }
     try {
         const res = await runWithRetry({ action: "getAllData" });
         if (res.success) {
@@ -207,13 +221,17 @@ async function fetchDataFromServer() {
                     appState[key] = res[key];
                 }
             });
-            showToast("✅ Sinkronisasi Berhasil", "success");
+            if (!skipSwal) {
+                showToast("✅ Sinkronisasi Berhasil", "success");
+            }
             return true;
         } else {
             throw new Error(res.message || "Gagal memuat data");
         }
     } catch (error) {
-        showToast(`⚠️ Sinkronisasi Gagal! ${error.message}`, "error");
+        if (!skipSwal) {
+            showToast(`⚠️ Sinkronisasi Gagal! ${error.message}`, "error");
+        }
         return false;
     } finally {
         appState.syncing = false;
@@ -239,10 +257,9 @@ async function loginUser(username, password) {
             appState.sessionToken = res.sessionToken;
             localStorage.setItem("cs_session_token", res.sessionToken);
 
+            // Load all database contents immediately after login without showing second loader
+            await fetchDataFromServer(true);
             showToast("✅ Login Berhasil!", "success");
-
-            // Load all database contents immediately after login
-            await fetchDataFromServer();
             return { success: true, user: res.user };
         } else {
             showToast(`⚠️ Gagal Masuk: ${res.message}`, "error");
@@ -259,7 +276,6 @@ async function checkAutoLogin() {
     if (!token) return false;
 
     try {
-        showLoading("Memulihkan sesi masuk & memuat data...");
         const res = await runWithRetry({
             action: "verifySession",
             sessionToken: token
@@ -269,21 +285,17 @@ async function checkAutoLogin() {
             appState.currentUser = res.user;
             appState.sessionToken = token;
 
-            // Load database contents
-            await fetchDataFromServer();
-            
-            hideLoading();
+            // Load database contents silently
+            await fetchDataFromServer(true);
             return true;
         } else {
             // Invalid session token, clean storage
             localStorage.removeItem("cs_session_token");
-            hideLoading();
             showToast("Sesi kedaluwarsa. Silakan login kembali.", "info");
             return false;
         }
     } catch (error) {
         localStorage.removeItem("cs_session_token");
-        hideLoading();
         showToast(`⚠️ Gagal menghubungkan sesi: ${error.message}`, "error");
         return false;
     }
@@ -316,7 +328,22 @@ async function clockInUser(shiftId, timeStr, dateStr) {
 
         if (res.success) {
             showToast("✅ " + res.message, "success");
-            await fetchDataFromServer();
+            const idx = appState.attendance.findIndex(a => a.user_id === appState.currentUser.user_id && a.date === dateStr);
+            if (idx !== -1) {
+                appState.attendance[idx].check_in_time = timeStr;
+                appState.attendance[idx].status = "pending";
+            } else {
+                appState.attendance.push({
+                    attendance_id: res.attendance_id || ("ATT" + Math.random().toString(36).substring(2, 10).toUpperCase()),
+                    user_id: appState.currentUser.user_id,
+                    shift_id: shiftId,
+                    date: dateStr,
+                    check_in_time: timeStr,
+                    check_out_time: "",
+                    status: "pending",
+                    late_checkout_minutes: 0
+                });
+            }
             return true;
         } else {
             showToast(`⚠️ Gagal: ${res.message}`, "error");
@@ -343,7 +370,24 @@ async function clockOutUser(timeStr, dateStr) {
 
         if (res.success) {
             showToast("✅ " + res.message, "success");
-            await fetchDataFromServer();
+            const idx = appState.attendance.findIndex(a => a.user_id === appState.currentUser.user_id && a.date === dateStr && a.status === "pending");
+            if (idx !== -1) {
+                appState.attendance[idx].check_out_time = timeStr;
+                const sh = appState.shifts.find(s => s.shift_id === appState.currentUser.shift_id);
+                if (sh) {
+                    const cleanIn = String(appState.attendance[idx].check_in_time).replace('.', ':');
+                    const partsIn = cleanIn.split(':');
+                    const checkInMins = parseInt(partsIn[0], 10) * 60 + (parseInt(partsIn[1], 10) || 0);
+
+                    const cleanShiftIn = String(sh.check_in_time).replace('.', ':');
+                    const partsShiftIn = cleanShiftIn.split(':');
+                    const shiftInMins = parseInt(partsShiftIn[0], 10) * 60 + (parseInt(partsShiftIn[1], 10) || 0);
+
+                    appState.attendance[idx].status = (checkInMins > shiftInMins) ? "terlambat" : "hadir";
+                } else {
+                    appState.attendance[idx].status = "hadir";
+                }
+            }
             return true;
         } else {
             showToast(`⚠️ Gagal: ${res.message}`, "error");
@@ -378,6 +422,7 @@ async function updateRoomStatusLocal(roomNumber, newStatus, remarks = "") {
         });
 
         if (res.success) {
+            const oldStatus = appState.rooms[roomIndex].room_status;
             appState.rooms[roomIndex].room_status = newStatus;
             appState.rooms[roomIndex].remarks = remarks;
             appState.rooms[roomIndex].last_updated = res.last_updated;
@@ -386,7 +431,7 @@ async function updateRoomStatusLocal(roomNumber, newStatus, remarks = "") {
             appState.room_status_history.push({
                 history_id: "HIS" + Math.random().toString(36).substring(2, 10).toUpperCase(),
                 room_number: String(roomNumber),
-                old_status: appState.rooms[roomIndex].room_status,
+                old_status: oldStatus,
                 new_status: newStatus,
                 changed_by: appState.currentUser.user_id,
                 timestamp: new Date().toISOString(),
@@ -586,7 +631,7 @@ async function deleteRoomLocal(roomNumber) {
 /**
  * Submits room checklist
  */
-async function submitRoomChecklistLocal(roomNumber, dateStr, startTime, endTime, tasksCompleted, linenChanged = [], refills = []) {
+async function submitRoomChecklistLocal(roomNumber, dateStr, startTime, endTime, tasksCompleted, linenChanged = [], refills = [], targetRoomStatus = "VC", remarks = "") {
     showLoading("Mengirim laporan pembersihan...");
     try {
         const res = await runWithRetry({
@@ -598,7 +643,9 @@ async function submitRoomChecklistLocal(roomNumber, dateStr, startTime, endTime,
             endTime: endTime,
             tasksCompleted: JSON.stringify(tasksCompleted),
             linenChanged: JSON.stringify(linenChanged),
-            refills: JSON.stringify(refills)
+            refills: JSON.stringify(refills),
+            targetRoomStatus: targetRoomStatus,
+            remarks: remarks
         });
 
         if (res.success) {
@@ -610,18 +657,19 @@ async function submitRoomChecklistLocal(roomNumber, dateStr, startTime, endTime,
                 date: dateStr,
                 start_time: startTime,
                 end_time: endTime,
-                duration_minutes: 20, // default placeholder
+                duration_minutes: calculateMinutesBetween(startTime, endTime),
                 tasks_completed: typeof tasksCompleted === "string" ? tasksCompleted : JSON.stringify(tasksCompleted),
                 linen_changed: typeof linenChanged === "string" ? linenChanged : JSON.stringify(linenChanged),
                 refills: typeof refills === "string" ? refills : JSON.stringify(refills),
                 status: "Completed",
-                kpi_score: res.kpi_score || 85
+                kpi_score: res.kpi_score || 100
             });
 
-            // Update room status to VC locally
+            // Update room status to targetRoomStatus locally
             const rIdx = appState.rooms.findIndex(r => String(r.room_number) === String(roomNumber));
             if (rIdx !== -1) {
-                appState.rooms[rIdx].room_status = "VC";
+                appState.rooms[rIdx].room_status = targetRoomStatus;
+                appState.rooms[rIdx].remarks = remarks;
                 appState.rooms[rIdx].last_cleaned_at = endTime;
                 appState.rooms[rIdx].last_cleaned_by = appState.currentUser.user_id;
             }
@@ -1050,7 +1098,7 @@ async function updateStaffAssignmentsLocal(staffUserId, activeTaskIds) {
 /**
  * Updates application settings (like API key and Google Drive folder URL)
  */
-async function updateSettingsLocal(settingId, apiKey, folderUrl) {
+async function updateSettingsLocal(settingId, apiKey, folderId) {
     showLoading("Menyimpan pengaturan...");
     try {
         const res = await runWithRetry({
@@ -1060,7 +1108,7 @@ async function updateSettingsLocal(settingId, apiKey, folderUrl) {
             keyValue: settingId,
             updates: {
                 api_key: apiKey,
-                folder_url: folderUrl
+                folder_id: folderId
             }
         });
         if (res.success) {
@@ -1068,9 +1116,9 @@ async function updateSettingsLocal(settingId, apiKey, folderUrl) {
             const idx = appState.settings.findIndex(s => s.setting_id === settingId);
             if (idx !== -1) {
                 appState.settings[idx].api_key = apiKey;
-                appState.settings[idx].folder_url = folderUrl;
+                appState.settings[idx].folder_id = folderId;
             } else {
-                appState.settings.push({ setting_id: settingId, api_key: apiKey, folder_url: folderUrl });
+                appState.settings.push({ setting_id: settingId, api_key: apiKey, folder_id: folderId });
             }
 
             hideLoading();
@@ -1753,18 +1801,18 @@ async function updateSettingsLocal(settingsData) {
             keyValue: "SET001",
             updates: {
                 api_key: settingsData.api_key,
-                folder_url: settingsData.folder_url
+                folder_id: settingsData.folder_id
             }
         });
         if (res.success) {
             if (appState.settings.length > 0) {
                 appState.settings[0].api_key = settingsData.api_key;
-                appState.settings[0].folder_url = settingsData.folder_url;
+                appState.settings[0].folder_id = settingsData.folder_id;
             } else {
                 appState.settings.push({
                     setting_id: "SET001",
                     api_key: settingsData.api_key,
-                    folder_url: settingsData.folder_url
+                    folder_id: settingsData.folder_id
                 });
             }
             hideLoading();
@@ -1830,17 +1878,17 @@ async function updateSettingsLocal(settingsData) {
         const res = await runWithRetry({
             action: "updateSettings",
             api_key: settingsData.api_key,
-            folder_url: settingsData.folder_url
+            folder_id: settingsData.folder_id
         });
         if (res.success) {
             if (appState.settings.length > 0) {
                 appState.settings[0].api_key = settingsData.api_key;
-                appState.settings[0].folder_url = settingsData.folder_url;
+                appState.settings[0].folder_id = settingsData.folder_id;
             } else {
                 appState.settings.push({
                     setting_id: 'SET1',
                     api_key: settingsData.api_key,
-                    folder_url: settingsData.folder_url
+                    folder_id: settingsData.folder_id
                 });
             }
             hideLoading();

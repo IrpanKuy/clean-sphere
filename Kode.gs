@@ -293,7 +293,7 @@ function doPost(e) {
           keyValue: "SET1",
           updates: {
             api_key: payload.api_key,
-            folder_url: payload.folder_url
+            folder_id: payload.folder_id
           }
         });
         // If not exist, try to create it
@@ -303,7 +303,7 @@ function doPost(e) {
               record: {
                 setting_id: "SET1",
                 api_key: payload.api_key,
-                folder_url: payload.folder_url
+                folder_id: payload.folder_id
               }
             });
         }
@@ -361,7 +361,7 @@ function setupDatabase() {
     "tb_shifts": ["shift_id", "shift_name", "check_in_time", "check_out_time", "pre_check_in_minutes", "pre_check_out_minutes", "is_active"],
     "tb_attendance": ["attendance_id", "user_id", "shift_id", "date", "check_in_time", "check_out_time", "status", "late_checkout_minutes"],
     "tb_leave_requests": ["request_id", "user_id", "leave_type", "start_date", "end_date", "reason", "proof_url", "status", "approved_by", "approved_at"],
-    "tb_settings": ["setting_id", "api_key", "folder_url"],
+    "tb_settings": ["setting_id", "api_key", "folder_id"],
     "tb_rooms": ["room_number", "room_status", "last_cleaned_at", "last_cleaned_by", "last_updated", "checklist_config", "remarks", "ideal_timer_minutes", "room_inventory"],
     "tb_room_assignments": ["assignment_id", "date", "room_number", "staff_id", "target_status_from", "target_status_to", "remarks", "status"],
     "tb_room_status_history": ["history_id", "room_number", "old_status", "new_status", "changed_by", "timestamp", "duration_minutes", "ideal_timer_minutes", "kpi_score"],
@@ -1100,18 +1100,18 @@ function saveFileToDrive(base64Data, filename) {
     let folder;
     let folderId = "";
     
-    // Look up tb_settings for folder_url or folder ID
+    // Look up tb_settings for folder_id
     try {
       const settingsList = getSheetData("tb_settings");
       if (settingsList && settingsList.length > 0) {
-        const urlOrId = settingsList[0].folder_url || "";
-        if (urlOrId) {
-          const match = urlOrId.match(/folders\/([a-zA-Z0-9-_]+)/) || urlOrId.match(/id=([a-zA-Z0-9-_]+)/);
-          folderId = match ? match[1] : urlOrId.trim();
+        const rawId = settingsList[0].folder_id || "";
+        if (rawId) {
+          const match = rawId.match(/folders\/([a-zA-Z0-9-_]+)/) || rawId.match(/id=([a-zA-Z0-9-_]+)/);
+          folderId = match ? match[1] : rawId.trim();
         }
       }
     } catch (e) {
-      console.warn("Gagal mengambil folder_url dari tb_settings: " + e.toString());
+      console.warn("Gagal mengambil folder_id dari tb_settings: " + e.toString());
     }
     
     if (folderId) {
@@ -1136,7 +1136,7 @@ function saveFileToDrive(base64Data, filename) {
     
     const fileId = file.getId();
     // Return Direct Link URL format as requested by the user
-    return "https://drive.google.com/uc?export=view&id=" + fileId;
+    return "https://docs.google.com/uc?export=view&id=" + fileId;
   } catch (e) {
     throw new Error("Gagal mengunggah file ke Drive: " + e.toString());
   }
@@ -1321,6 +1321,8 @@ function handleSubmitRoomChecklistAction(payload) {
   const linenChanged = payload.linenChanged || "[]";
   const refills = payload.refills || "[]";
   const status = payload.status || "Completed";
+  const targetRoomStatus = payload.targetRoomStatus || "VC";
+  const remarks = payload.remarks || "Dibersihkan otomatis via checklist.";
   
   if (!roomNumber || !staffId || !date || !startTime || !endTime) {
     return { success: false, message: "Parameter checklist kamar tidak lengkap." };
@@ -1328,65 +1330,14 @@ function handleSubmitRoomChecklistAction(payload) {
   
   const duration = calculateMinutesBetween(startTime, endTime);
   
-  let totalTasks = 0;
-  let completedCount = 0;
-  
   const room = findRowInSheet("tb_rooms", "room_number", roomNumber);
-  if (room && room.checklist_config) {
-    try {
-      const config = JSON.parse(room.checklist_config);
-      let submission = {};
-      try {
-        submission = JSON.parse(tasksCompleted);
-      } catch (err) {
-        submission = {};
-      }
-      
-      for (let category in config) {
-        const catConfig = config[category];
-        const catSubmission = submission[category] || {};
-        
-        if (Array.isArray(catConfig)) {
-          catConfig.forEach(item => {
-            totalTasks++;
-            if (catSubmission[item] === true || catSubmission[item] === "true") {
-              completedCount++;
-            }
-          });
-        } else if (catConfig && Array.isArray(catConfig.items)) {
-          catConfig.items.forEach(item => {
-            totalTasks++;
-            const itemVal = catSubmission[item];
-            if (catConfig.type === "checklist") {
-              if (itemVal === true || itemVal === "true") {
-                completedCount++;
-              }
-            } else if (catConfig.type === "in") {
-              if (itemVal && (parseInt(itemVal.in, 10) > 0 || parseInt(itemVal, 10) > 0)) {
-                completedCount++;
-              }
-            } else if (catConfig.type === "inout") {
-              if (itemVal && (parseInt(itemVal.in, 10) > 0 || parseInt(itemVal.out, 10) > 0)) {
-                completedCount++;
-              }
-            }
-          });
-        }
-      }
-    } catch (e) {
-      console.warn("Gagal menghitung KPI: " + e.toString());
-    }
-  }
+  const idealTime = room ? (parseInt(room.ideal_timer_minutes, 10) || 30) : 30;
   
-  if (totalTasks === 0) totalTasks = 1;
-  const completionScore = (completedCount / totalTasks) * 70;
-  
-  let efficiencyScore = 30;
-  const targetMins = 15;
-  if (duration > targetMins) {
-    efficiencyScore = Math.max(0, 30 - (duration - targetMins) * 2);
+  let kpiScore = 100;
+  if (duration > idealTime) {
+    kpiScore = Math.max(0, 100 - (duration - idealTime) * 2);
   }
-  const kpiScore = Number((completionScore + efficiencyScore).toFixed(2));
+  kpiScore = Number(kpiScore.toFixed(2));
   
   const checklistId = "CKR" + Utilities.getUuid().substring(0, 8).toUpperCase();
   
@@ -1424,11 +1375,11 @@ function handleSubmitRoomChecklistAction(payload) {
   const nowISO = Utilities.formatDate(new Date(), tz, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
   
   updateRowInSheet("tb_rooms", "room_number", roomNumber, {
-    room_status: "VC",
+    room_status: targetRoomStatus,
     last_cleaned_at: endTime,
     last_cleaned_by: staffId,
     last_updated: nowISO,
-    remarks: "Dibersihkan otomatis via checklist."
+    remarks: remarks
   });
   
   const historyId = "HIS" + Utilities.getUuid().substring(0, 8).toUpperCase();
@@ -1444,7 +1395,7 @@ function handleSubmitRoomChecklistAction(payload) {
     history_id: historyId,
     room_number: roomNumber,
     old_status: oldStatus,
-    new_status: "VC",
+    new_status: targetRoomStatus,
     changed_by: staffId,
     timestamp: nowISO,
     duration_minutes: statusDuration,
@@ -2003,8 +1954,37 @@ function handleGenerateDailyDataAction(payload) {
     // 1. Generate Attendance
     const users = getSheetData("tb_users");
     const activeStaff = users.filter(u => u.status === "active" && u.role === "staff");
-    const attendance = getSheetData("tb_attendance");
+    let attendance = getSheetData("tb_attendance");
     
+    // Deduplicate existing records for today to handle duplicate rows gracefully
+    const attSheet = getSheet("tb_attendance");
+    const userAttendanceGroups = {};
+    attendance.forEach(a => {
+      if (a.date === todayStr) {
+        if (!userAttendanceGroups[a.user_id]) {
+          userAttendanceGroups[a.user_id] = [];
+        }
+        userAttendanceGroups[a.user_id].push(a);
+      }
+    });
+
+    Object.keys(userAttendanceGroups).forEach(uid => {
+      const records = userAttendanceGroups[uid];
+      if (records.length > 1) {
+        // Keep the best record (one with check_in_time, or the first one)
+        let bestRecord = records.find(r => r.check_in_time) || records[0];
+        const toDelete = records.filter(r => r.attendance_id !== bestRecord.attendance_id);
+        // Sort descending by row number so we don't mess up row shifts during deletion
+        toDelete.sort((x, y) => y._rowNum - x._rowNum);
+        toDelete.forEach(r => {
+          attSheet.deleteRow(r._rowNum);
+        });
+      }
+    });
+
+    // Refetch clean attendance after deduplication
+    attendance = getSheetData("tb_attendance");
+
     // 1. Process previous days' pending/belum_absen attendances to "alpha"
     attendance.forEach(a => {
       if ((a.status === "pending" || a.status === "belum_absen") && a.date !== todayStr) {

@@ -25,16 +25,26 @@ const RoomManagementView = {
       editRoomRemarks: '',
       // Static config for 10 fixed statuses
       statusConfig: {
+        "OD": { name: "Occupied Dirty", color: "#FBBF24", text: "#000000" },
+        "OC": { name: "Occupied Clean", color: "#065F46", text: "#FFFFFF" },
         "VD": { name: "Vacant Dirty", color: "#EF4444", text: "#FFFFFF" },
         "VC": { name: "Vacant Clean", color: "#10B981", text: "#FFFFFF" },
-        "OD": { name: "Occupied Dirty", color: "#F59E0B", text: "#FFFFFF" },
-        "OC": { name: "Occupied Clean", color: "#3B82F6", text: "#FFFFFF" },
-        "DND": { name: "Do Not Disturb", color: "#8B5CF6", text: "#FFFFFF" },
-        "SR": { name: "Service Refused", color: "#EC4899", text: "#FFFFFF" },
-        "NS": { name: "No Show", color: "#64748B", text: "#FFFFFF" },
-        "SO": { name: "Sleep Out", color: "#14B8A6", text: "#FFFFFF" },
-        "OOO": { name: "Out of Order", color: "#374151", text: "#FFFFFF" },
-        "OOS": { name: "Out of Service", color: "#78350F", text: "#FFFFFF" }
+        "VCI": { name: "Vacant Clean Inspected", color: "#3B82F6", text: "#FFFFFF" },
+        "ED": { name: "Expected Departure", color: "#F97316", text: "#FFFFFF" },
+        "EA": { name: "Expected Arrival", color: "#64748B", text: "#FFFFFF" },
+        "NS": { name: "No Show", color: "#FFFFFF", text: "#000000" },
+        "RS": { name: "Refused Service", color: "#8B4513", text: "#FFFFFF" },
+        "DND": { name: "Do Not Disturb", color: "#800000", text: "#FFFFFF" },
+        "OOO": { name: "Out of Order", color: "#EF4444", text: "#FFFFFF" },
+        "OOS": { name: "Out of Service", color: "#EC4899", text: "#FFFFFF" },
+        "SO": { name: "Sleep Out", color: "#FFFFFF", text: "#000000" },
+        "DL": { name: "Double Lock", color: "#800000", text: "#FFFFFF" },
+        "NL": { name: "No Luggage", color: "#FFFFFF", text: "#000000" },
+        "CO": { name: "Check Out", color: "#EF4444", text: "#FFFFFF" },
+        "DO": { name: "Due Out", color: "#F97316", text: "#FFFFFF" },
+        "MUR": { name: "Make Up Room", color: "#FBBF24", text: "#000000" },
+        "VIP": { name: "Very Important Person", color: "#8B5CF6", text: "#FFFFFF" },
+        "COMP": { name: "Complimentary", color: "#FDFBD3", text: "#85754E" }
       },
       // Categories builder list
       newRoomChecklist: [

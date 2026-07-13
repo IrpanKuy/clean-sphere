@@ -235,36 +235,160 @@
       </div>
     </div>
 
-    <!-- Room List -->
-    <div v-if="!selectedRoom" class="p-5 flex-1 overflow-y-auto">
+    <!-- Room List Header Tabs -->
+    <div v-if="!selectedRoom" class="px-5 mb-2">
+      <div class="bg-slate-100 p-1 rounded-xl flex gap-1">
+        <button 
+          @click="roomControlTab = 'rooms'"
+          :class="['flex-1 py-2 text-xs font-extrabold rounded-lg border-none transition-all cursor-pointer', 
+            roomControlTab === 'rooms' ? 'bg-white text-primary-navy shadow-sm' : 'bg-transparent text-slate-400 hover:text-slate-600']">
+          Data Kamar
+        </button>
+        <button 
+          @click="roomControlTab = 'history'"
+          :class="['flex-1 py-2 text-xs font-extrabold rounded-lg border-none transition-all cursor-pointer', 
+            roomControlTab === 'history' ? 'bg-white text-primary-navy shadow-sm' : 'bg-transparent text-slate-400 hover:text-slate-600']">
+          Riwayat Perubahan
+        </button>
+      </div>
+    </div>
+
+    <!-- Room List Tab Content -->
+    <div v-if="!selectedRoom && roomControlTab === 'rooms'" class="p-5 flex-1 overflow-y-auto">
+      <!-- Search Input -->
+      <div class="mb-4 relative">
+        <input 
+          type="text" 
+          v-model="roomSearchQuery" 
+          placeholder="Cari nomor kamar atau keterangan..." 
+          class="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 pl-10 text-xs font-bold text-slate-700 placeholder-slate-400 outline-none focus:border-blue-500 transition-colors shadow-[0_4px_20px_rgba(0,0,0,0.01)]">
+        <svg class="absolute left-3.5 top-3.5 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+      </div>
+
       <div class="flex items-center justify-between mb-4">
-        <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Daftar Semua Kamar</p>
-        <span class="bg-blue-100 text-blue-700 text-[10px] font-bold px-2.5 py-1 rounded-full">{{ roomsList.length }} Kamar</span>
+        <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Daftar Kamar</p>
+        <span class="bg-blue-100 text-blue-700 text-[10px] font-bold px-2.5 py-1 rounded-full">{{ filteredRoomsList.length }} Kamar</span>
       </div>
       
       <div class="flex flex-col gap-4">
-        <div v-for="room in roomsList" :key="room.room_number" @click="openRoomDetail(room)" class="group bg-white rounded-2xl p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 active:scale-[0.98] transition-all duration-300 cursor-pointer relative overflow-hidden flex justify-between items-center hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:border-blue-100">
-          <div :class="['absolute top-0 left-0 w-1.5 h-full transition-colors', isRoomCleanedToday(room.room_number) ? 'bg-emerald-500' : 'bg-gradient-to-b from-amber-400 to-orange-400']"></div>
+        <div v-for="room in filteredRoomsList" :key="room.room_number" class="bg-white rounded-2xl p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 relative overflow-hidden flex flex-col gap-4">
+          <div :class="['absolute top-0 left-0 w-1.5 h-full transition-colors', 
+            (room.room_status === 'OD' || room.room_status === 'MUR') ? 'bg-yellow-400' :
+            room.room_status === 'OC' ? 'bg-green-800' :
+            (room.room_status === 'VD' || room.room_status === 'OOO' || room.room_status === 'CO') ? 'bg-red-500' :
+            room.room_status === 'VC' ? 'bg-emerald-500' :
+            room.room_status === 'VCI' ? 'bg-blue-500' :
+            (room.room_status === 'ED' || room.room_status === 'DO') ? 'bg-orange-500' :
+            room.room_status === 'EA' ? 'bg-slate-400' :
+            (room.room_status === 'NS' || room.room_status === 'SO' || room.room_status === 'NL') ? 'bg-slate-200' :
+            room.room_status === 'RS' ? 'bg-[saddlebrown]' :
+            (room.room_status === 'DND' || room.room_status === 'DL') ? 'bg-[#800000]' :
+            room.room_status === 'OOS' ? 'bg-pink-400' :
+            room.room_status === 'VIP' ? 'bg-purple-500' :
+            room.room_status === 'COMP' ? 'bg-[#FDFBD3]' : 'bg-slate-400']"></div>
           
-          <div class="flex items-center gap-4 pl-2">
-            <div :class="['w-12 h-12 rounded-full flex items-center justify-center text-lg font-black shadow-inner', isRoomCleanedToday(room.room_number) ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-700 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors']">
+          <div class="flex items-start gap-4 pl-2">
+            <div class="w-12 h-12 rounded-full flex items-center justify-center text-lg font-black bg-slate-50 text-slate-700 shrink-0">
               {{ room.room_number }}
             </div>
-            <div>
-              <p class="text-[10px] text-slate-400 font-medium flex items-center gap-1 mb-0.5 uppercase tracking-wide">
-                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                Target Ideal: {{ room.ideal_timer_minutes || 30 }} Menit
-              </p>
-              <h3 class="font-bold text-slate-700 text-sm">Status: {{ isRoomCleanedToday(room.room_number) ? 'Selesai (VC)' : 'Kotor (' + room.room_status + ')' }}</h3>
+            <div class="flex-1 min-w-0">
+              <div class="flex flex-wrap items-center gap-2 mb-2">
+                <!-- Status Badge (Clickable to change status directly!) -->
+                <span 
+                  @click="changeStatusDirectly(room)"
+                  :class="['px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-wide cursor-pointer hover:opacity-80 transition-all flex items-center gap-1.5 border shadow-sm', 
+                    (room.room_status === 'OD' || room.room_status === 'MUR') ? 'bg-yellow-50 text-yellow-800 border-yellow-200' :
+                    room.room_status === 'OC' ? 'bg-green-900 text-white border-green-950' :
+                    (room.room_status === 'VD' || room.room_status === 'OOO' || room.room_status === 'CO') ? 'bg-red-50 text-red-800 border-red-200' :
+                    room.room_status === 'VC' ? 'bg-emerald-50 text-emerald-800 border-emerald-200' :
+                    room.room_status === 'VCI' ? 'bg-blue-50 text-blue-800 border-blue-200' :
+                    (room.room_status === 'ED' || room.room_status === 'DO') ? 'bg-orange-50 text-orange-800 border-orange-200' :
+                    room.room_status === 'EA' ? 'bg-slate-100 text-slate-700 border-slate-200' :
+                    (room.room_status === 'NS' || room.room_status === 'SO' || room.room_status === 'NL') ? 'bg-white text-slate-600 border-slate-200' :
+                    room.room_status === 'RS' ? 'bg-amber-50 text-amber-900 border-amber-200' : 
+                    (room.room_status === 'DND' || room.room_status === 'DL') ? 'bg-[#800000]/10 text-[#800000] border-[#800000]/20' :
+                    room.room_status === 'OOS' ? 'bg-pink-50 text-pink-800 border-pink-200' :
+                    room.room_status === 'VIP' ? 'bg-purple-50 text-purple-800 border-purple-200' :
+                    room.room_status === 'COMP' ? 'bg-[#FDFBD3] text-[#85754E] border-[#F9F5A4]' : 'bg-slate-50 text-slate-700 border-slate-200']"
+                  title="Klik untuk ubah status secara langsung">
+                  <span>{{ room.room_status }} - {{ getStatusName(room.room_status) }}</span>
+                  <svg class="w-3.5 h-3.5 text-slate-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                </span>
+                <span class="text-[10px] text-slate-400 font-semibold uppercase tracking-wide">
+                  Ideal: {{ room.ideal_timer_minutes || 30 }} Mnt
+                </span>
+              </div>
+              <p class="text-xs text-slate-500 font-medium whitespace-pre-wrap leading-relaxed">Ket: {{ room.remarks || 'Tidak ada keterangan' }}</p>
             </div>
           </div>
           
-          <div class="text-right flex flex-col items-end gap-2">
-            <span :class="['px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider', isRoomCleanedToday(room.room_number) ? 'bg-emerald-100 text-emerald-700 shadow-sm shadow-emerald-100' : 'bg-amber-100 text-amber-700 shadow-sm shadow-amber-100']">
-              {{ isRoomCleanedToday(room.room_number) ? 'Selesai' : 'Tertunda' }}
-            </span>
-            <svg class="w-5 h-5 text-slate-300 group-hover:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+          <div class="w-full">
+            <button @click="startCleaning(room)" class="w-full py-3 bg-gradient-to-r from-blue-600 to-primary-royal hover:from-blue-700 hover:to-blue-800 text-white text-xs font-bold rounded-xl border-none cursor-pointer shadow-md shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              Mulai Pembersihan
+            </button>
           </div>
+        </div>
+        
+        <div v-if="filteredRoomsList.length === 0" class="text-center py-10 bg-white rounded-2xl border border-slate-100">
+          <p class="text-xs font-bold text-slate-400">Tidak ada data kamar yang cocok.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Room History Tab Content -->
+    <div v-if="!selectedRoom && roomControlTab === 'history'" class="p-5 flex-1 overflow-y-auto">
+      <!-- Search Input -->
+      <div class="mb-4 relative">
+        <input 
+          type="text" 
+          v-model="historySearchQuery" 
+          placeholder="Cari nomor kamar atau status..." 
+          class="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 pl-10 text-xs font-bold text-slate-700 placeholder-slate-400 outline-none focus:border-blue-500 transition-colors shadow-[0_4px_20px_rgba(0,0,0,0.01)]">
+        <svg class="absolute left-3.5 top-3.5 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+      </div>
+
+      <div class="flex items-center justify-between mb-4">
+        <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Riwayat Perubahan Anda</p>
+        <span class="bg-blue-100 text-blue-700 text-[10px] font-bold px-2.5 py-1 rounded-full">{{ filteredHistoryList.length }} Riwayat</span>
+      </div>
+
+      <div class="flex flex-col gap-4">
+        <div v-for="his in filteredHistoryList" :key="his.history_id" class="bg-white rounded-2xl p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 relative overflow-hidden flex flex-col gap-3">
+          <div class="flex justify-between items-center">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-black bg-slate-50 text-slate-700">
+                {{ his.room_number }}
+              </div>
+              <div>
+                <span class="text-[10px] text-slate-400 font-bold block">{{ new Date(his.timestamp).toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' }) }}</span>
+                <span class="text-xs text-slate-700 font-extrabold">Perubahan Status</span>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-[10px] font-black text-slate-400 uppercase">{{ his.old_status }}</span>
+              <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+              <span :class="['px-2 py-0.5 rounded text-[10px] font-extrabold uppercase', 
+                his.new_status === 'VC' ? 'bg-emerald-50 text-emerald-700' :
+                his.new_status === 'VD' ? 'bg-rose-50 text-rose-700' :
+                his.new_status === 'OC' ? 'bg-blue-50 text-blue-700' :
+                his.new_status === 'OD' ? 'bg-amber-50 text-amber-700' : 'bg-slate-50 text-slate-700']">
+                {{ his.new_status }}
+              </span>
+            </div>
+          </div>
+
+          <div class="border-t border-dashed border-slate-100 pt-2 flex justify-between items-center text-[10.5px]">
+            <span class="text-slate-400 font-bold">Durasi / KPI:</span>
+            <span class="text-slate-700 font-extrabold">
+              {{ his.duration_minutes ? his.duration_minutes + ' Mnt' : '-' }}
+              <span v-if="his.kpi_score" class="ml-1 px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-600 font-black">KPI: {{ his.kpi_score }}</span>
+            </span>
+          </div>
+        </div>
+
+        <div v-if="filteredHistoryList.length === 0" class="text-center py-10 bg-white rounded-2xl border border-slate-100">
+          <p class="text-xs font-bold text-slate-400">Belum ada riwayat perubahan status dari Anda.</p>
         </div>
       </div>
     </div>
@@ -279,114 +403,102 @@
             Kembali
           </button>
           <div class="flex items-center gap-2">
-            <h3 class="font-black text-slate-800 text-2xl">Kamar {{ selectedRoom.room_number }}</h3>
-            <span v-if="isRoomCleanedToday(selectedRoom.room_number)" class="bg-emerald-500 text-white w-5 h-5 rounded-full flex items-center justify-center">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
-            </span>
+            <h3 class="font-black text-slate-800 text-2xl">Kamar {{ selectedRoom ? selectedRoom.room_number : '' }}</h3>
           </div>
-        </div>
-        <div class="bg-slate-50 px-4 py-2 rounded-xl border border-slate-100 text-right min-w-[100px]">
-          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Durasi</p>
-          <p :class="['text-xl font-mono font-bold transition-colors', isRoomTimerRunning ? 'text-primary-royal animate-pulse' : 'text-slate-700']">
-            {{ formatTimer(roomTimer) }}
-          </p>
         </div>
       </div>
 
       <!-- Scrollable Content -->
-      <div class="flex-1 overflow-y-auto p-5 pb-24" :class="{'opacity-60 grayscale-[30%] pointer-events-none transition-all duration-500': !isRoomTimerRunning && !isRoomCleanedToday(selectedRoom.room_number)}">
-        
-        <!-- Checklist Section -->
-        <div class="mb-8" v-if="localChecklist.length > 0">
-          <div class="flex justify-between items-end mb-4">
-            <h4 class="text-sm font-extrabold text-slate-700">Tugas Pembersihan</h4>
-            <span class="text-xs font-bold text-slate-400">{{ completedChecklistCount }}/{{ totalChecklistCount }} Selesai</span>
+      <div class="flex-1 overflow-y-auto p-5 pb-24">
+        <!-- Top Timer & Control Card -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 mb-6 text-center flex flex-col items-center gap-3">
+          <div class="text-3xl font-mono font-black text-slate-800 tracking-wider">
+            {{ formatTimer(roomTimer) }}
           </div>
           
-          <!-- Progress Bar -->
-          <div class="w-full bg-slate-200 rounded-full h-2 mb-5 overflow-hidden">
-            <div class="bg-gradient-to-r from-blue-500 to-primary-royal h-2 rounded-full transition-all duration-500 ease-out" :style="{ width: checklistProgress + '%' }"></div>
-          </div>
+          <button 
+            @click="isRoomTimerRunning ? stopRoomTimer() : startRoomTimer()"
+            :class="['px-6 py-3.5 rounded-xl font-extrabold text-sm border-none cursor-pointer transition-all active:scale-95 text-white shadow-md flex items-center justify-center gap-2 w-full max-w-[240px]',
+              isRoomTimerRunning 
+                ? 'bg-gradient-to-r from-rose-500 to-red-500 shadow-rose-500/20' 
+                : 'bg-gradient-to-r from-emerald-500 to-green-500 shadow-emerald-500/20']">
+            <span v-if="isRoomTimerRunning">
+              <svg class="w-4 h-4 animate-pulse inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3.5" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3.5" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"></path></svg>
+              Selesai Pembersihan
+            </span>
+            <span v-else>
+              <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3.5" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3.5" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              Mulai Timer
+            </span>
+          </button>
 
-          <div class="flex flex-col gap-5">
-            <div v-for="cat in localChecklist" :key="cat.category" class="bg-white rounded-xl p-4 border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.01)] flex flex-col gap-3">
-              <h5 class="text-[11.5px] font-bold text-slate-400 uppercase tracking-wider">{{ cat.category }} ({{ cat.type }})</h5>
-              <div class="flex flex-col gap-2">
-                <label v-for="(task, i) in cat.items" :key="i" :class="['flex items-center gap-3 p-3.5 rounded-xl border transition-all cursor-pointer', task.done ? 'bg-blue-50/20 border-blue-200' : 'bg-slate-50/40 border-slate-100']">
+          <div class="flex items-center gap-4 text-xs font-bold text-slate-500 mt-1">
+            <div>
+              <span class="text-slate-400 font-medium">Waktu Ideal:</span>
+              <span class="text-slate-700 ml-1">{{ selectedRoom ? selectedRoom.ideal_timer_minutes || 30 : 30 }} Menit</span>
+            </div>
+            <div class="h-3 w-px bg-slate-200"></div>
+            <div>
+              <span class="text-slate-400 font-medium">Target Status:</span>
+              <span class="px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-black ml-1 uppercase">{{ targetRoomStatus }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Forms Container (Disabled if timer is not running) -->
+        <div :class="{'opacity-50 grayscale pointer-events-none transition-all duration-300': !isRoomTimerRunning}">
+          
+          <div class="flex flex-col gap-6">
+            <div v-for="cat in localChecklist" :key="cat.category" class="bg-white rounded-2xl p-5 border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.01)] flex flex-col gap-4">
+              <div class="flex items-center justify-between border-b border-slate-50 pb-2">
+                <h4 class="text-sm font-extrabold text-slate-700 tracking-wide uppercase">{{ cat.category }}</h4>
+                <span class="text-[10px] font-extrabold px-2 py-0.5 bg-slate-100 text-slate-500 rounded-md">
+                  {{ cat.type === 'checklist' ? 'Centang' : cat.type === 'inout' ? 'Linen (In & Out)' : 'Refill (In)' }}
+                </span>
+              </div>
+              
+              <!-- Checklist Type (checkbox) -->
+              <div v-if="cat.type === 'checklist'" class="flex flex-col gap-2.5">
+                <label v-for="(item, i) in cat.items" :key="i" :class="['flex items-center gap-3 p-3.5 rounded-xl border transition-all cursor-pointer', item.val ? 'bg-blue-50/20 border-blue-200' : 'bg-slate-50/40 border-slate-100']">
                   <div class="relative flex items-center justify-center shrink-0">
-                    <input type="checkbox" v-model="task.done" class="peer appearance-none w-5.5 h-5.5 border-2 border-slate-300 rounded-lg checked:border-blue-600 checked:bg-blue-600 transition-all cursor-pointer">
+                    <input type="checkbox" v-model="item.val" class="peer appearance-none w-5.5 h-5.5 border-2 border-slate-300 rounded-lg checked:border-blue-600 checked:bg-blue-600 transition-all cursor-pointer">
                     <svg class="absolute w-3.5 h-3.5 text-white pointer-events-none opacity-0 peer-checked:opacity-100 peer-checked:scale-100 scale-50 transition-all duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3.5" d="M5 13l4 4L19 7"></path></svg>
                   </div>
-                  <span class="text-xs font-bold transition-colors leading-tight" :class="task.done ? 'text-slate-500 line-through opacity-70' : 'text-slate-600'">{{ task.name }}</span>
+                  <span class="text-xs font-bold transition-colors leading-tight" :class="item.val ? 'text-slate-500 line-through opacity-70' : 'text-slate-600'">{{ item.name }}</span>
                 </label>
               </div>
-            </div>
-          </div>
-        </div>
 
-        <!-- Stok Inventaris Dalam Kamar -->
-        <div class="mb-8" v-if="localRoomInventory.length > 0">
-          <h4 class="text-sm font-extrabold text-slate-700 mb-4 flex items-center gap-2">
-            <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
-            Refill & Update Stok Kamar
-          </h4>
-          <div class="flex flex-col gap-3">
-            <div v-for="(item, j) in localRoomInventory" :key="j" class="flex items-center justify-between bg-white p-4 rounded-xl shadow-sm border border-slate-100">
-              <div class="flex flex-col">
-                <span class="text-[13px] font-bold text-slate-700">{{ item.name }}</span>
-                <span class="text-[10px] font-semibold text-slate-400">Min. Stok: {{ item.min_qty || 0 }}</span>
+              <!-- Linen (In & Out) Type -->
+              <div v-else-if="cat.type === 'inout'" class="flex flex-col gap-4">
+                <div v-for="(item, i) in cat.items" :key="i" class="bg-slate-50/60 p-4 rounded-xl border border-slate-100 flex flex-col gap-3">
+                  <span class="text-xs font-extrabold text-slate-700">{{ item.name }}</span>
+                  <div class="grid grid-cols-2 gap-4">
+                    <div>
+                      <span class="text-[10px] font-bold text-slate-400 block mb-1 uppercase tracking-wide">Jumlah In (Bersih)</span>
+                      <input type="number" v-model.number="item.valIn" class="w-full bg-white border-2 border-slate-200 rounded-lg p-2.5 text-center text-sm font-bold text-slate-700 focus:border-primary-royal transition-all outline-none" min="0">
+                    </div>
+                    <div>
+                      <span class="text-[10px] font-bold text-slate-400 block mb-1 uppercase tracking-wide">Jumlah Out (Kotor)</span>
+                      <input type="number" v-model.number="item.valOut" class="w-full bg-white border-2 border-slate-200 rounded-lg p-2.5 text-center text-sm font-bold text-slate-700 focus:border-primary-royal transition-all outline-none" min="0">
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div class="flex items-center gap-3">
-                <button @click="updateRoomInventoryStaff(j, -1)" class="w-8 h-8 rounded-full bg-slate-100 text-slate-600 font-black hover:bg-slate-200 active:scale-95 transition-all border-none cursor-pointer flex items-center justify-center">-</button>
-                <span class="w-8 text-center font-black text-lg text-primary-navy">{{ item.qty }}</span>
-                <button @click="updateRoomInventoryStaff(j, 1)" class="w-8 h-8 rounded-full bg-slate-100 text-slate-600 font-black hover:bg-slate-200 active:scale-95 transition-all border-none cursor-pointer flex items-center justify-center">+</button>
-              </div>
-            </div>
-          </div>
-        </div>
 
-        <!-- Linen Section -->
-        <div class="mb-8 bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
-          <h4 class="text-sm font-extrabold text-slate-700 mb-4 flex items-center gap-2">
-            <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
-            Pencatatan Linen
-          </h4>
-          <div class="grid grid-cols-2 gap-5">
-            <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
-              <label class="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">Linen In <span class="text-[10px] lowercase font-normal">(Bersih)</span></label>
-              <div class="relative">
-                <input type="number" v-model.number="localLinenIn" class="w-full bg-white border-2 border-slate-200 rounded-lg p-3 text-lg font-bold text-slate-700 focus:border-primary-royal focus:ring-4 focus:ring-blue-50 transition-all outline-none text-center">
-              </div>
-            </div>
-            <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
-              <label class="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">Linen Out <span class="text-[10px] lowercase font-normal">(Kotor)</span></label>
-              <div class="relative">
-                <input type="number" v-model.number="localLinenOut" class="w-full bg-white border-2 border-slate-200 rounded-lg p-3 text-lg font-bold text-slate-700 focus:border-primary-royal focus:ring-4 focus:ring-blue-50 transition-all outline-none text-center">
+              <!-- Refill (In) Type -->
+              <div v-else-if="cat.type === 'in'" class="grid grid-cols-2 gap-4">
+                <div v-for="(item, i) in cat.items" :key="i" class="bg-slate-50/60 p-4 rounded-xl border border-slate-100 flex flex-col gap-2">
+                  <span class="text-xs font-extrabold text-slate-600 leading-tight mb-1">{{ item.name }}</span>
+                  <div>
+                    <span class="text-[10px] font-bold text-slate-400 block mb-1 uppercase tracking-wide">Jumlah In</span>
+                    <input type="number" v-model.number="item.valIn" class="w-full bg-white border-2 border-slate-200 rounded-lg p-2.5 text-center text-sm font-bold text-slate-700 focus:border-primary-royal transition-all outline-none" min="0">
+                  </div>
+                </div>
               </div>
             </div>
           </div>
+          
         </div>
-
-        <div v-if="isRoomCleanedToday(selectedRoom.room_number)" class="bg-gradient-to-r from-emerald-50 to-green-50 p-5 rounded-2xl border border-emerald-100 text-center shadow-sm">
-          <div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-3">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-          </div>
-          <h4 class="font-bold text-emerald-800 text-lg mb-1">Kamar Selesai</h4>
-          <p class="text-xs font-semibold text-emerald-600">Laporan pembersihan kamar sudah terkirim ke Google Sheets.</p>
-        </div>
-
-      </div>
-
-      <!-- Action Buttons (Fixed at bottom) -->
-      <div class="absolute bottom-0 left-0 w-full p-5 bg-white/80 backdrop-blur-md border-t border-slate-100 z-20" v-if="!isRoomCleanedToday(selectedRoom.room_number)">
-        <button v-if="!isRoomTimerRunning" @click="startRoomTimer" class="w-full bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white font-extrabold text-lg py-4 rounded-2xl shadow-[0_10px_20px_rgba(16,185,129,0.3)] border-none cursor-pointer transition-all active:scale-[0.98] flex justify-center items-center gap-3">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-          Mulai Pengerjaan
-        </button>
-        <button v-else @click="stopRoomTimer" class="w-full bg-gradient-to-r from-rose-500 to-red-500 hover:from-rose-600 hover:to-red-600 text-white font-extrabold text-lg py-4 rounded-2xl shadow-[0_10px_20px_rgba(244,63,94,0.3)] border-none cursor-pointer transition-all active:scale-[0.98] flex justify-center items-center gap-3">
-          <svg class="w-6 h-6 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"></path></svg>
-          Selesai & Simpan (Stop)
-        </button>
       </div>
     </div>
   </div>
@@ -471,14 +583,73 @@
             <input type="text" v-model="newStaffProject.title" placeholder="Cth: Membersihkan saringan AC" class="w-full bg-slate-50 border-2 border-slate-100 rounded-xl p-3.5 text-sm font-semibold focus:border-purple-400 focus:bg-white focus:ring-4 focus:ring-purple-50 transition-all outline-none">
           </div>
           <div>
+            <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider ml-1">Periode Proyek</label>
+            <select v-model="newStaffProject.period" class="w-full bg-slate-50 border-2 border-slate-100 rounded-xl p-3.5 text-sm font-semibold focus:border-purple-400 focus:bg-white focus:ring-4 focus:ring-purple-50 transition-all outline-none">
+              <option value="Harian">Harian</option>
+              <option value="Mingguan">Mingguan</option>
+              <option value="Bulanan">Bulanan</option>
+              <option value="Insidentil">Insidentil / Lainnya</option>
+            </select>
+          </div>
+          <div>
             <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider ml-1">Deskripsi Detail</label>
             <textarea v-model="newStaffProject.desc" placeholder="Jelaskan apa yang dikerjakan..." rows="3" class="w-full bg-slate-50 border-2 border-slate-100 rounded-xl p-3.5 text-sm font-semibold focus:border-purple-400 focus:bg-white focus:ring-4 focus:ring-purple-50 transition-all outline-none resize-none"></textarea>
           </div>
           
-          <!-- Mock Photo Upload -->
-          <div class="border-2 border-dashed border-slate-200 rounded-xl p-4 text-center cursor-pointer hover:bg-slate-50 transition-colors">
-            <svg class="w-8 h-8 mx-auto text-slate-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-            <span class="text-xs font-bold text-purple-600">Ketuk untuk Ambil Foto</span>
+          <div>
+            <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider ml-1">Foto Bukti Pekerjaan</label>
+            <div class="grid grid-cols-2 gap-3 mb-3">
+              <!-- Upload File / Gallery Button -->
+              <button type="button" @click="triggerFileUpload" class="py-3 px-4 bg-slate-50 hover:bg-slate-100 border-2 border-slate-200 border-dashed rounded-xl text-slate-700 font-bold text-xs transition-all flex flex-col items-center justify-center gap-1.5 cursor-pointer">
+                <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                Pilih dari Galeri
+              </button>
+              <!-- Direct Native Camera Capture Button -->
+              <button type="button" @click="triggerCameraUpload" class="py-3 px-4 bg-slate-50 hover:bg-slate-100 border-2 border-slate-200 border-dashed rounded-xl text-slate-700 font-bold text-xs transition-all flex flex-col items-center justify-center gap-1.5 cursor-pointer">
+                <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                Ambil Foto (Kamera)
+              </button>
+            </div>
+            
+            <!-- In-app Live WebRTC Camera Button -->
+            <button type="button" @click="openLiveCamera" class="w-full py-3 bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100/70 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer mb-3">
+              <svg class="w-4 h-4 text-purple-600 animate-pulse" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 5a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2h-1.586a1 1 0 01-.707-.293l-1.12-1.12A1 1 0 0011.878 3H8.122a1 1 0 00-.707.293L6.293 4.707A1 1 0 015.586 5H4zm6 9a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"></path></svg>
+              Gunakan Kamera Langsung (WebRTC)
+            </button>
+
+            <!-- Hidden Inputs -->
+            <input type="file" id="file-upload-input" accept="image/*" class="hidden" @change="onProjectFileChange">
+            <input type="file" id="camera-upload-input" accept="image/*" capture="environment" class="hidden" @change="onProjectFileChange">
+
+            <!-- Live Video Modal/Area -->
+            <div v-if="isLiveCameraOpen" class="bg-black rounded-2xl overflow-hidden relative mb-3 aspect-video flex flex-col justify-end">
+              <video id="live-video-element" autoplay playsinline class="w-full h-full object-cover absolute top-0 left-0"></video>
+              <div class="absolute top-2 right-2 z-20">
+                <button type="button" @click="closeLiveCamera" class="w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 border-none cursor-pointer">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+              </div>
+              <div class="p-4 z-10 w-full flex justify-center bg-gradient-to-t from-black/80 to-transparent">
+                <button type="button" @click="captureLivePhoto" class="px-6 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-full font-extrabold text-xs shadow-lg shadow-purple-500/30 border-none cursor-pointer flex items-center gap-1.5 active:scale-95 transition-all">
+                  <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 5a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2h-1.586a1 1 0 01-.707-.293l-1.12-1.12A1 1 0 0011.878 3H8.122a1 1 0 00-.707.293L6.293 4.707A1 1 0 015.586 5H4zm6 9a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"></path></svg>
+                  Ambil Gambar
+                </button>
+              </div>
+            </div>
+
+            <!-- Image Preview Card -->
+            <div v-if="projectImagePreview" class="bg-slate-50 border border-slate-100 rounded-2xl p-3 flex items-center gap-3 relative animate-[fadeIn_0.2s_ease-out] mb-3">
+              <div class="w-16 h-16 rounded-xl overflow-hidden border border-slate-200 shrink-0">
+                <img :src="projectImagePreview" class="w-full h-full object-cover">
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-xs font-bold text-slate-800 truncate">{{ projectImageFile ? projectImageFile.name : 'Foto Kamera Langsung' }}</p>
+                <p class="text-[10px] text-slate-400 font-semibold uppercase mt-0.5">{{ projectImageFile ? (projectImageFile.size / 1024).toFixed(1) + ' KB' : 'Image ready' }}</p>
+              </div>
+              <button type="button" @click="removeProjectImage" class="w-8 h-8 rounded-full hover:bg-slate-200/60 text-rose-500 flex items-center justify-center border-none bg-transparent cursor-pointer transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+              </button>
+            </div>
           </div>
 
           <button @click="submitStaffProject" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-extrabold py-4 rounded-xl mt-2 active:scale-95 transition-all shadow-[0_8px_20px_rgba(147,51,234,0.25)] flex justify-center items-center gap-2">
@@ -492,16 +663,21 @@
       <div class="mt-2">
         <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 pl-1">Riwayat Proyek Anda</p>
         <div class="flex flex-col gap-4">
-          <div v-for="proj in dummyStaffProjects" :key="proj.id" class="bg-white rounded-2xl p-5 shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-slate-100 flex flex-col gap-3 relative overflow-hidden">
+          <div v-for="proj in staffProjectsList" :key="proj.work_project_id" class="bg-white rounded-2xl p-5 shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-slate-100 flex flex-col gap-3 relative overflow-hidden">
             <div class="absolute top-0 right-0 w-16 h-16 bg-purple-50 rounded-bl-[100%] z-0"></div>
             
             <div class="flex items-start gap-3 relative z-10">
               <div class="w-10 h-10 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center shrink-0 mt-0.5">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
               </div>
-              <div>
+              <div class="flex-1 min-w-0">
                 <h3 class="font-black text-slate-800 text-base leading-tight">{{ proj.title }}</h3>
-                <p class="text-xs text-slate-500 mt-1.5 leading-relaxed">{{ proj.desc }}</p>
+                <p class="text-xs text-slate-500 mt-1.5 leading-relaxed whitespace-pre-wrap">{{ proj.description || '-' }}</p>
+                
+                <!-- Display project photo if present -->
+                <div v-if="proj.photo_url" class="mt-3 rounded-xl overflow-hidden max-h-[200px] border border-slate-100 relative group cursor-pointer shadow-sm">
+                  <img :src="getDisplayPhotoUrl(proj.photo_url)" class="w-full h-full object-cover max-h-[200px]" alt="Bukti Foto">
+                </div>
               </div>
             </div>
             
@@ -512,6 +688,10 @@
               </span>
               <span class="bg-purple-50 text-purple-700 px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider">{{ proj.period }}</span>
             </div>
+          </div>
+          
+          <div v-if="staffProjectsList.length === 0" class="text-center py-10 bg-white rounded-2xl border border-slate-100">
+            <p class="text-xs font-bold text-slate-400">Belum ada riwayat laporan proyek pekerjaan staf dari Anda.</p>
           </div>
         </div>
       </div>
@@ -1018,6 +1198,33 @@ createApp({
     };
 
     // --- Room Control Logic ---
+    const statusDescriptions = {
+      "OD": "Occupied Dirty",
+      "OC": "Occupied Clean",
+      "VD": "Vacant Dirty",
+      "VC": "Vacant Clean",
+      "VCI": "Vacant Clean Inspected",
+      "ED": "Expected Departure",
+      "EA": "Expected Arrival",
+      "NS": "No Show",
+      "RS": "Refused Service",
+      "DND": "Do Not Disturb",
+      "OOO": "Out of Order",
+      "OOS": "Out of Service",
+      "SO": "Sleep Out",
+      "DL": "Double Lock",
+      "NL": "No Luggage",
+      "CO": "Check Out",
+      "DO": "Due Out",
+      "MUR": "Make Up Room",
+      "VIP": "Very Important Person",
+      "COMP": "Complimentary"
+    };
+    
+    const getStatusName = (code) => {
+      return statusDescriptions[code] || code;
+    };
+
     const roomsList = computed(() => {
       return appState.rooms || [];
     });
@@ -1027,14 +1234,100 @@ createApp({
     };
 
     const selectedRoom = ref(null);
+    const targetRoomStatus = ref('VC');
     const roomTimer = ref(0);
     let intervalTimer = null;
     const isRoomTimerRunning = ref(false);
 
     const localChecklist = ref([]);
-    const localRoomInventory = ref([]);
+    const localRefills = ref([]);
     const localLinenIn = ref(0);
     const localLinenOut = ref(0);
+
+    const roomControlTab = ref('rooms');
+    const roomSearchQuery = ref('');
+    const historySearchQuery = ref('');
+    const targetRemarks = ref('');
+
+    const filteredRoomsList = computed(() => {
+      let list = roomsList.value || [];
+      const query = roomSearchQuery.value.trim().toLowerCase();
+      if (query) {
+        list = list.filter(r => String(r.room_number).toLowerCase().includes(query) || (r.remarks && String(r.remarks).toLowerCase().includes(query)));
+      }
+      return list;
+    });
+
+    const filteredHistoryList = computed(() => {
+      if (!appState.currentUser) return [];
+      let list = appState.room_status_history.filter(h => h.changed_by === appState.currentUser.user_id);
+      list.sort((x, y) => new Date(y.timestamp || 0) - new Date(x.timestamp || 0));
+      
+      const query = historySearchQuery.value.trim().toLowerCase();
+      if (query) {
+        list = list.filter(h => String(h.room_number).toLowerCase().includes(query) || String(h.new_status).toLowerCase().includes(query) || String(h.old_status).toLowerCase().includes(query));
+      }
+      return list;
+    });
+
+    const changeStatusDirectly = (room) => {
+      Swal.fire({
+        title: 'Ubah Status Kamar Langsung',
+        html: `
+          <div class="text-left text-xs text-slate-500 mb-4">
+            Ubah status Kamar <b>${room.room_number}</b> secara langsung (Status Saat Ini: <b>${room.room_status}</b>)
+          </div>
+          <div class="text-left mb-3">
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Status Baru</label>
+            <select id="swal-new-status" class="w-full border border-slate-200 p-2.5 rounded-lg text-sm bg-white outline-none">
+              <option value="OD" ${room.room_status === 'OD' ? 'selected' : ''}>OD - Occupied Dirty</option>
+              <option value="OC" ${room.room_status === 'OC' ? 'selected' : ''}>OC - Occupied Clean</option>
+              <option value="VD" ${room.room_status === 'VD' ? 'selected' : ''}>VD - Vacant Dirty</option>
+              <option value="VC" ${room.room_status === 'VC' ? 'selected' : ''}>VC - Vacant Clean</option>
+              <option value="VCI" ${room.room_status === 'VCI' ? 'selected' : ''}>VCI - Vacant Clean Inspected</option>
+              <option value="ED" ${room.room_status === 'ED' ? 'selected' : ''}>ED - Expected Departure</option>
+              <option value="EA" ${room.room_status === 'EA' ? 'selected' : ''}>EA - Expected Arrival</option>
+              <option value="NS" ${room.room_status === 'NS' ? 'selected' : ''}>NS - No Show</option>
+              <option value="RS" ${room.room_status === 'RS' ? 'selected' : ''}>RS - Refused Service</option>
+              <option value="DND" ${room.room_status === 'DND' ? 'selected' : ''}>DND - Do Not Disturb</option>
+              <option value="OOO" ${room.room_status === 'OOO' ? 'selected' : ''}>OOO - Out of Order</option>
+              <option value="OOS" ${room.room_status === 'OOS' ? 'selected' : ''}>OOS - Out of Service</option>
+              <option value="SO" ${room.room_status === 'SO' ? 'selected' : ''}>SO - Sleep Out</option>
+              <option value="DL" ${room.room_status === 'DL' ? 'selected' : ''}>DL - Double Lock</option>
+              <option value="NL" ${room.room_status === 'NL' ? 'selected' : ''}>NL - No Luggage</option>
+              <option value="CO" ${room.room_status === 'CO' ? 'selected' : ''}>CO - Check Out</option>
+              <option value="DO" ${room.room_status === 'DO' ? 'selected' : ''}>DO - Due Out</option>
+              <option value="MUR" ${room.room_status === 'MUR' ? 'selected' : ''}>MUR - Make Up Room</option>
+              <option value="VIP" ${room.room_status === 'VIP' ? 'selected' : ''}>VIP - Very Important Person</option>
+              <option value="COMP" ${room.room_status === 'COMP' ? 'selected' : ''}>COMP - Complimentary</option>
+            </select>
+          </div>
+          <div class="text-left">
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Remarks / Keterangan Perubahan</label>
+            <input type="text" id="swal-direct-remarks" placeholder="Contoh: Kamar terisi tamu baru" class="w-full border border-slate-200 p-2.5 rounded-lg text-sm outline-none">
+          </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Simpan Perubahan',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#1E3A8A',
+        cancelButtonColor: '#EF4444',
+        preConfirm: () => {
+          const newStatus = document.getElementById('swal-new-status').value;
+          const remarks = document.getElementById('swal-direct-remarks').value.trim();
+          if (!remarks) {
+            Swal.showValidationMessage('Keterangan / Remarks wajib diisi!');
+            return false;
+          }
+          return { newStatus, remarks };
+        }
+      }).then(async (result) => {
+        if (result.isConfirmed) {
+          const { newStatus, remarks } = result.value;
+          await updateRoomStatusLocal(room.room_number, newStatus, remarks);
+        }
+      });
+    };
 
     const completedChecklistCount = computed(() => {
       let count = 0;
@@ -1059,29 +1352,95 @@ createApp({
       return (completedChecklistCount.value / totalChecklistCount.value) * 100;
     });
 
-    const openRoomDetail = (room) => {
+    const startCleaning = (room) => {
+      Swal.fire({
+        title: 'Mulai Pembersihan',
+        html: `
+          <div class="text-left text-xs text-slate-500 mb-4">
+            Pembersihan untuk Kamar <b>${room.room_number}</b> (Status Saat Ini: <b>${room.room_status}</b>)
+          </div>
+          <div class="text-left mb-3">
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Target Status Baru</label>
+            <select id="swal-target-status" class="w-full border border-slate-200 p-2.5 rounded-lg text-sm bg-white outline-none">
+              <option value="OD" ${room.room_status === 'OD' ? 'selected' : ''}>OD - Occupied Dirty</option>
+              <option value="OC" ${room.room_status === 'OC' ? 'selected' : ''}>OC - Occupied Clean</option>
+              <option value="VD" ${room.room_status === 'VD' ? 'selected' : ''}>VD - Vacant Dirty</option>
+              <option value="VC" ${room.room_status === 'VC' ? 'selected' : ''}>VC - Vacant Clean</option>
+              <option value="VCI" ${room.room_status === 'VCI' ? 'selected' : ''}>VCI - Vacant Clean Inspected</option>
+              <option value="ED" ${room.room_status === 'ED' ? 'selected' : ''}>ED - Expected Departure</option>
+              <option value="EA" ${room.room_status === 'EA' ? 'selected' : ''}>EA - Expected Arrival</option>
+              <option value="NS" ${room.room_status === 'NS' ? 'selected' : ''}>NS - No Show</option>
+              <option value="RS" ${room.room_status === 'RS' ? 'selected' : ''}>RS - Refused Service</option>
+              <option value="DND" ${room.room_status === 'DND' ? 'selected' : ''}>DND - Do Not Disturb</option>
+              <option value="OOO" ${room.room_status === 'OOO' ? 'selected' : ''}>OOO - Out of Order</option>
+              <option value="OOS" ${room.room_status === 'OOS' ? 'selected' : ''}>OOS - Out of Service</option>
+              <option value="SO" ${room.room_status === 'SO' ? 'selected' : ''}>SO - Sleep Out</option>
+              <option value="DL" ${room.room_status === 'DL' ? 'selected' : ''}>DL - Double Lock</option>
+              <option value="NL" ${room.room_status === 'NL' ? 'selected' : ''}>NL - No Luggage</option>
+              <option value="CO" ${room.room_status === 'CO' ? 'selected' : ''}>CO - Check Out</option>
+              <option value="DO" ${room.room_status === 'DO' ? 'selected' : ''}>DO - Due Out</option>
+              <option value="MUR" ${room.room_status === 'MUR' ? 'selected' : ''}>MUR - Make Up Room</option>
+              <option value="VIP" ${room.room_status === 'VIP' ? 'selected' : ''}>VIP - Very Important Person</option>
+              <option value="COMP" ${room.room_status === 'COMP' ? 'selected' : ''}>COMP - Complimentary</option>
+            </select>
+          </div>
+          <div class="text-left">
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Remarks / Keterangan Perubahan</label>
+            <input type="text" id="swal-remarks" placeholder="Contoh: Pembersihan rutin selesai" class="w-full border border-slate-200 p-2.5 rounded-lg text-sm outline-none">
+          </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Mulai Pembersihan',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#1E3A8A',
+        cancelButtonColor: '#EF4444',
+        preConfirm: () => {
+          const targetStatus = document.getElementById('swal-target-status').value;
+          const remarks = document.getElementById('swal-remarks').value.trim();
+          if (!remarks) {
+            Swal.showValidationMessage('Keterangan / Remarks wajib diisi!');
+            return false;
+          }
+          return { targetStatus, remarks };
+        }
+      }).then((result) => {
+        if (result.isConfirmed) {
+          const { targetStatus, remarks } = result.value;
+          openRoomDetail(room, targetStatus, remarks);
+        }
+      });
+    };
+
+    const openRoomDetail = (room, targetStatus = 'VC', remarks = '') => {
       selectedRoom.value = room;
+      targetRoomStatus.value = targetStatus;
+      targetRemarks.value = remarks;
       roomTimer.value = 0;
       isRoomTimerRunning.value = false;
       
       // Parse dynamic checklist config
       try {
         const config = JSON.parse(room.checklist_config || "{}");
-        localChecklist.value = Object.keys(config).map(catName => ({
-          category: catName,
-          type: config[catName].type,
-          items: config[catName].items.map(item => ({ name: item, done: false }))
-        }));
+        localChecklist.value = Object.keys(config).map(catName => {
+          const cat = config[catName];
+          const type = cat.type || 'checklist';
+          const items = (cat.items || []).map(itemName => {
+            if (type === 'checklist') {
+              return { name: itemName, val: false };
+            } else if (type === 'inout') {
+              return { name: itemName, valIn: 0, valOut: 0 };
+            } else { // 'in'
+              return { name: itemName, valIn: 0 };
+            }
+          });
+          return {
+            category: catName,
+            type: type,
+            items: items
+          };
+        });
       } catch(e) {
         localChecklist.value = [];
-      }
-
-      // Parse room inventory items
-      try {
-        const inv = JSON.parse(room.room_inventory || "[]");
-        localRoomInventory.value = Array.isArray(inv) ? JSON.parse(JSON.stringify(inv)) : [];
-      } catch(e) {
-        localRoomInventory.value = [];
       }
 
       localLinenIn.value = 0;
@@ -1105,7 +1464,7 @@ createApp({
     const stopRoomTimer = () => {
       Swal.fire({
         title: 'Selesai?',
-        text: "Anda yakin telah menyelesaikan semua checklist kamar ini?",
+        text: "Anda yakin telah menyelesaikan pembersihan kamar ini?",
         icon: 'question',
         showCancelButton: true,
         confirmButtonColor: '#10B981',
@@ -1116,22 +1475,37 @@ createApp({
           clearInterval(intervalTimer);
           isRoomTimerRunning.value = false;
           
-          // Prepare checklist payload
+          // Prepare dynamic checklist payload
           const tasksCompleted = {};
+          const linenChanged = [];
+          const refills = [];
+          
           localChecklist.value.forEach(cat => {
-            cat.items.forEach(item => {
-              tasksCompleted[item.name] = item.done;
-            });
+            tasksCompleted[cat.category] = {};
+            
+            if (cat.type === 'checklist') {
+              cat.items.forEach(item => {
+                tasksCompleted[cat.category][item.name] = item.val;
+              });
+            } else if (cat.type === 'inout') {
+              cat.items.forEach(item => {
+                tasksCompleted[cat.category][item.name] = { in: Number(item.valIn || 0), out: Number(item.valOut || 0) };
+                linenChanged.push({
+                  item: item.name,
+                  in: Number(item.valIn || 0),
+                  out: Number(item.valOut || 0)
+                });
+              });
+            } else if (cat.type === 'in') {
+              cat.items.forEach(item => {
+                tasksCompleted[cat.category][item.name] = { in: Number(item.valIn || 0) };
+                refills.push({
+                  name: item.name,
+                  qty: Number(item.valIn || 0)
+                });
+              });
+            }
           });
-          
-          const linenChanged = [
-            { item: "Linen", in: Number(localLinenIn.value), out: Number(localLinenOut.value) }
-          ];
-          
-          const refills = localRoomInventory.value.map(item => ({
-            name: item.name,
-            qty: Number(item.qty)
-          }));
           
           const now = new Date();
           const endTimeISO = now.toISOString();
@@ -1144,30 +1518,16 @@ createApp({
             endTimeISO,
             tasksCompleted,
             linenChanged,
-            refills
+            refills,
+            targetRoomStatus.value,
+            targetRemarks.value
           );
           
           if (success) {
-            Swal.fire('Berhasil!', 'Data pengerjaan kamar disimpan ke Google Sheets.', 'success');
             selectedRoom.value = null;
           }
         }
       });
-    };
-
-    const updateRoomInventoryStaff = async (index, change) => {
-      const item = localRoomInventory.value[index];
-      if (change < 0 && Number(item.qty) <= 0) return;
-      
-      const oldQty = item.qty;
-      item.qty = Number(item.qty) + change;
-      
-      // Update directly to Google Sheets
-      const success = await updateRoomInventoryLocal(selectedRoom.value.room_number, localRoomInventory.value);
-      if (!success) {
-        // Rollback on failure
-        item.qty = oldQty;
-      }
     };
 
     // --- Housekeeping Projects Logic ---
@@ -1192,23 +1552,140 @@ createApp({
     };
 
     // --- Staff Work Projects Logic ---
-    const dummyStaffProjects = ref([
-      { id: 1, title: 'Pengecekan AC Kamar VIP', desc: 'Filter AC sudah kotor, dibersihkan dan dicuci', date: '10 Jul 2026', period: 'Bulanan' }
-    ]);
+    const staffProjectsList = computed(() => {
+      if (!appState.currentUser) return [];
+      let list = (appState.staff_work_projects || []).filter(p => String(p.staff_id) === String(appState.currentUser.user_id));
+      return list.slice().reverse();
+    });
     const showAddStaffProject = ref(false);
-    const newStaffProject = ref({ title: '', desc: '' });
-    const submitStaffProject = () => {
-      if (!newStaffProject.value.title) return;
-      dummyStaffProjects.value.unshift({
-        id: Date.now(),
-        title: newStaffProject.value.title,
-        desc: newStaffProject.value.desc,
-        date: currentDate.value,
-        period: 'Harian'
-      });
-      Swal.fire('Berhasil', 'Laporan Proyek telah dikirim', 'success');
-      showAddStaffProject.value = false;
-      newStaffProject.value = { title: '', desc: '' };
+    const newStaffProject = ref({ title: '', desc: '', period: 'Harian' });
+
+    // Image upload/capture references
+    const projectImageFile = ref(null);
+    const projectImagePreview = ref(null);
+    const isLiveCameraOpen = ref(false);
+    let liveStream = null;
+
+    const triggerFileUpload = () => {
+      const el = document.getElementById('file-upload-input');
+      if (el) el.click();
+    };
+
+    const triggerCameraUpload = () => {
+      const el = document.getElementById('camera-upload-input');
+      if (el) el.click();
+    };
+
+    const onProjectFileChange = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      projectImageFile.value = file;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        projectImagePreview.value = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    };
+
+    const dataURLtoBlob = (dataurl, filename) => {
+      const arr = dataurl.split(',');
+      const mime = arr[0].match(/:(.*?);/)[1];
+      const bstr = atob(arr[1]);
+      let n = bstr.length;
+      const u8arr = new Uint8Array(n);
+      while (n--) {
+        u8arr[n] = bstr.charCodeAt(n);
+      }
+      const blob = new Blob([u8arr], { type: mime });
+      blob.name = filename;
+      return blob;
+    };
+
+    const openLiveCamera = async () => {
+      if (liveStream) {
+        closeLiveCamera();
+      }
+      isLiveCameraOpen.value = true;
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: 'environment' } 
+        });
+        liveStream = stream;
+        setTimeout(() => {
+          const video = document.getElementById('live-video-element');
+          if (video) {
+            video.srcObject = stream;
+            video.play();
+          }
+        }, 150);
+      } catch (err) {
+        isLiveCameraOpen.value = false;
+        Swal.fire({
+          icon: 'warning',
+          title: 'Akses Kamera WebRTC Gagal',
+          text: 'Browser Anda tidak mengizinkan akses kamera langsung atau tidak mendukung WebRTC. Silakan gunakan tombol "Ambil Foto (Kamera)" yang memicu kamera asli perangkat Anda.',
+          confirmButtonColor: '#7C3AED'
+        });
+      }
+    };
+
+    const closeLiveCamera = () => {
+      if (liveStream) {
+        liveStream.getTracks().forEach(track => track.stop());
+        liveStream = null;
+      }
+      isLiveCameraOpen.value = false;
+    };
+
+    const captureLivePhoto = () => {
+      const video = document.getElementById('live-video-element');
+      if (!video) return;
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const dataURL = canvas.toDataURL('image/jpeg', 0.8);
+      projectImagePreview.value = dataURL;
+      projectImageFile.value = dataURLtoBlob(dataURL, `cam_${Date.now()}.jpg`);
+      closeLiveCamera();
+    };
+
+    const removeProjectImage = () => {
+      projectImageFile.value = null;
+      projectImagePreview.value = null;
+      const in1 = document.getElementById('file-upload-input');
+      const in2 = document.getElementById('camera-upload-input');
+      if (in1) in1.value = "";
+      if (in2) in2.value = "";
+    };
+
+    const submitStaffProject = async () => {
+      if (!newStaffProject.value.title) {
+        Swal.fire('Form Belum Lengkap', 'Silakan masukkan judul pekerjaan terlebih dahulu.', 'warning');
+        return;
+      }
+      const success = await submitStaffWorkProjectLocal(
+        newStaffProject.value.title,
+        newStaffProject.value.desc || '',
+        newStaffProject.value.period || 'Harian',
+        todayStr.value,
+        projectImageFile.value
+      );
+      if (success) {
+        showAddStaffProject.value = false;
+        newStaffProject.value = { title: '', desc: '', period: 'Harian' };
+        removeProjectImage();
+      }
+    };
+
+    const getDisplayPhotoUrl = (url) => {
+      if (!url) return '';
+      const match = url.match(/id=([a-zA-Z0-9-_]+)/) || url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+      if (match) {
+        return `https://lh3.googleusercontent.com/d/${match[1]}`;
+      }
+      return url;
     };
 
     // --- Misc Forms ---
@@ -1266,28 +1743,48 @@ createApp({
       roomsList,
       isRoomCleanedToday,
       selectedRoom,
+      targetRoomStatus,
       roomTimer,
       isRoomTimerRunning,
       localChecklist,
-      localRoomInventory,
+      localRefills,
       localLinenIn,
       localLinenOut,
       completedChecklistCount,
       totalChecklistCount,
       checklistProgress,
+      startCleaning,
       openRoomDetail,
       formatTimer,
       startRoomTimer,
       stopRoomTimer,
-      updateRoomInventoryStaff,
+      roomControlTab,
+      roomSearchQuery,
+      historySearchQuery,
+      targetRemarks,
+      filteredRoomsList,
+      filteredHistoryList,
+      changeStatusDirectly,
+      getStatusName,
       // Housekeeping
       dummyHouseKeeping,
       finishHouseKeeping,
       // Staff Projects
-      dummyStaffProjects,
+      staffProjectsList,
       showAddStaffProject,
       newStaffProject,
       submitStaffProject,
+      getDisplayPhotoUrl,
+      projectImageFile,
+      projectImagePreview,
+      isLiveCameraOpen,
+      triggerFileUpload,
+      triggerCameraUpload,
+      onProjectFileChange,
+      openLiveCamera,
+      closeLiveCamera,
+      captureLivePhoto,
+      removeProjectImage,
       // Misc
       submitLeave,
       inventoryForm,

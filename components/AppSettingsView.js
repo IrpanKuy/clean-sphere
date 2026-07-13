@@ -8,7 +8,7 @@ const AppSettingsView = {
     return {
       formSettings: {
         api_key: '',
-        folder_url: ''
+        folder_id: ''
       },
       formAdmin: {
         username: '',
@@ -25,7 +25,7 @@ const AppSettingsView = {
       handler(newVal) {
         if (newVal && newVal.length > 0) {
           this.formSettings.api_key = newVal[0].api_key || '';
-          this.formSettings.folder_url = newVal[0].folder_url || '';
+          this.formSettings.folder_id = newVal[0].folder_id || '';
         }
       }
     },
@@ -52,8 +52,8 @@ const AppSettingsView = {
         </div>
         <div class="p-6 flex flex-col gap-5">
           <div class="flex flex-col gap-2">
-            <label class="text-[13px] font-bold text-slate-700">Google Drive Folder URL (Untuk Kirim Foto)</label>
-            <input type="text" class="w-full h-[42px] px-3.5 bg-white border border-slate-200 rounded-xl text-[13.5px] font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm" v-model="formSettings.folder_url" placeholder="https://drive.google.com/drive/folders/..." />
+            <label class="text-[13px] font-bold text-slate-700">Google Drive Folder ID (Konektor Foto Bukti)</label>
+            <input type="text" class="w-full h-[42px] px-3.5 bg-white border border-slate-200 rounded-xl text-[13.5px] font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm" v-model="formSettings.folder_id" placeholder="Cth: 1abc-xyz1234567..." />
           </div>
           <div class="flex flex-col gap-2">
             <label class="text-[13px] font-bold text-slate-700">API Key (Untuk Fitur Chatbot)</label>
@@ -96,7 +96,7 @@ const AppSettingsView = {
       this.isSavingSettings = true;
       this.$emit('update-settings', {
         api_key: this.formSettings.api_key,
-        folder_url: this.formSettings.folder_url
+        folder_id: this.formSettings.folder_id
       }, () => {
         this.isSavingSettings = false;
       });
