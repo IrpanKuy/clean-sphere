@@ -8,7 +8,7 @@
 
 // --- CONFIGURATION ---
 // REPLACE THIS URL with your deployed Google Apps Script Web App URL
-var GAS_URL = "https://script.google.com/macros/s/AKfycbzmLupueYOJwWUhcDSj_XMPs17TyQNIbIwG32FGOiZzDU0bis2bA-Sjk5Uqy9pVpaQcEg/exec";
+var GAS_URL = "https://script.google.com/macros/s/AKfycbwKKqj63oQtWx9-wt8WxpV7js8vlsXFinKO5H3VxSw2TCGgmpeHcwxI59vDbEfr8sJT5Q/exec";
 
 // --- GLOBAL VARIABLES (STATE CONTAINER) ---
 var appState = Vue.reactive({
@@ -33,6 +33,7 @@ var appState = Vue.reactive({
     projects: [], // Backwards compatibility
     housekeeping_project_master: [],
     housekeeping_projects: [],
+    housekeeping_submissions: [],
     staff_work_projects: [],
     inventory: [],
     inventory_transactions: [],
@@ -739,10 +740,10 @@ async function submitPublicAreaChecklistLocal(areaName, dateStr, status, notes =
 /**
  * Securely writes inventory transactions to backend ledger
  */
-async function recordInventoryTxLocal(itemId, type, qty, dateStr, remarks = "") {
+async function recordInventoryTxLocal(itemId, type, qty, dateStr, remarks = "", detailSpesifik = null) {
     showToast("⏳ Mengirim transaksi barang...", "pending");
     try {
-        const res = await runWithRetry({
+        const payload = {
             action: "addInventoryTransaction",
             itemId: itemId,
             userId: appState.currentUser.user_id,
@@ -750,11 +751,35 @@ async function recordInventoryTxLocal(itemId, type, qty, dateStr, remarks = "") 
             quantity: qty,
             date: dateStr,
             remarks: remarks
-        });
+        };
+        
+        // If detail_spesifik provided, include it for backend to update the item's dynamic attributes
+        if (detailSpesifik) {
+            payload.detail_spesifik = typeof detailSpesifik === 'string' 
+                ? detailSpesifik 
+                : JSON.stringify(detailSpesifik);
+        }
+        
+        const res = await runWithRetry(payload);
 
         if (res.success) {
+            // Optimistic local update: update stock_current on the item
+            const idx = appState.inventory.findIndex(i => i.item_id === itemId);
+            if (idx !== -1 && res.stock_current !== undefined) {
+                appState.inventory[idx].stock_current = res.stock_current;
+                if (type === 'in') {
+                    appState.inventory[idx].stock_in = (parseInt(appState.inventory[idx].stock_in) || 0) + parseInt(qty);
+                } else if (type === 'out') {
+                    appState.inventory[idx].stock_out = (parseInt(appState.inventory[idx].stock_out) || 0) + parseInt(qty);
+                }
+                // Update detail_spesifik locally if provided
+                if (detailSpesifik) {
+                    appState.inventory[idx].detail_spesifik = typeof detailSpesifik === 'string' 
+                        ? detailSpesifik 
+                        : JSON.stringify(detailSpesifik);
+                }
+            }
             showToast("✅ Transaksi inventaris berhasil dicatat.", "success");
-            await fetchDataFromServer();
             return true;
         } else {
             showToast(`⚠️ Transaksi Ditolak: ${res.message}`, "error");
@@ -1417,10 +1442,11 @@ async function updateRoomChecklistLocal(checklistId, tasksCompleted, linenChange
 /**
  * Adds a new inventory item
  */
-async function addInventoryItemLocal(itemCode, categoryId, itemName, stockInitial, minStock, remarks = "") {
+async function addInventoryItemLocal(itemCode, categoryId, itemName, stockInitial, minStock, remarks = "", detailSpesifik = "{}") {
     showLoading("Menambahkan barang inventaris...");
     try {
         const itemId = "INV" + Math.random().toString(36).substring(2, 10).toUpperCase();
+        const detailStr = typeof detailSpesifik === 'string' ? detailSpesifik : JSON.stringify(detailSpesifik);
         const res = await runWithRetry({
             action: "addInventoryItem",
             item_id: itemId,
@@ -1429,6 +1455,7 @@ async function addInventoryItemLocal(itemCode, categoryId, itemName, stockInitia
             item_name: itemName,
             stock_initial: Number(stockInitial) || 0,
             min_stock: Number(minStock) || 5,
+            detail_spesifik: detailStr,
             remarks: remarks
         });
         if (res.success) {
@@ -1442,6 +1469,7 @@ async function addInventoryItemLocal(itemCode, categoryId, itemName, stockInitia
                 stock_out: 0,
                 stock_current: Number(stockInitial) || 0,
                 min_stock: Number(minStock) || 5,
+                detail_spesifik: detailStr,
                 remarks: remarks
             });
             hideLoading();
@@ -1474,9 +1502,10 @@ async function addInventoryItemLocal(itemCode, categoryId, itemName, stockInitia
 /**
  * Updates an inventory item
  */
-async function updateInventoryItemLocal(itemId, itemCode, categoryId, itemName, minStock, remarks = "") {
+async function updateInventoryItemLocal(itemId, itemCode, categoryId, itemName, minStock, remarks = "", detailSpesifik = "{}") {
     showLoading("Menyimpan pembaruan barang...");
     try {
+        const detailStr = typeof detailSpesifik === 'string' ? detailSpesifik : JSON.stringify(detailSpesifik);
         const res = await runWithRetry({
             action: "updateRecord",
             sheetName: "tb_inventory",
@@ -1487,6 +1516,7 @@ async function updateInventoryItemLocal(itemId, itemCode, categoryId, itemName, 
                 category_id: categoryId,
                 item_name: itemName,
                 min_stock: Number(minStock) || 5,
+                detail_spesifik: detailStr,
                 remarks: remarks
             }
         });
@@ -1497,6 +1527,7 @@ async function updateInventoryItemLocal(itemId, itemCode, categoryId, itemName, 
                 appState.inventory[idx].category_id = categoryId;
                 appState.inventory[idx].item_name = itemName;
                 appState.inventory[idx].min_stock = Number(minStock) || 5;
+                appState.inventory[idx].detail_spesifik = detailStr;
                 appState.inventory[idx].remarks = remarks;
             }
             hideLoading();
@@ -1570,10 +1601,11 @@ async function deleteInventoryItemLocal(itemId) {
 /**
  * Adds an inventory category
  */
-async function addCategoryLocal(name, desc) {
+async function addCategoryLocal(name, desc, defaultAttributes = "[]") {
     showLoading("Menambahkan kategori...");
     try {
         const catId = "CAT" + Math.random().toString(36).substring(2, 10).toUpperCase();
+        const attrStr = typeof defaultAttributes === 'string' ? defaultAttributes : JSON.stringify(defaultAttributes);
         const res = await runWithRetry({
             action: "createRecord",
             sheetName: "tb_inventory_categories",
@@ -1581,6 +1613,7 @@ async function addCategoryLocal(name, desc) {
                 category_id: catId,
                 category_name: name,
                 description: desc,
+                default_attributes: attrStr,
                 is_active: true
             }
         });
@@ -1589,6 +1622,7 @@ async function addCategoryLocal(name, desc) {
                 category_id: catId,
                 category_name: name,
                 description: desc,
+                default_attributes: attrStr,
                 is_active: true
             });
             hideLoading();
@@ -1605,9 +1639,10 @@ async function addCategoryLocal(name, desc) {
 /**
  * Updates an inventory category
  */
-async function updateCategoryLocal(catId, name, desc, isActive) {
+async function updateCategoryLocal(catId, name, desc, defaultAttributes = "[]", isActive = true) {
     showLoading("Memperbarui kategori...");
     try {
+        const attrStr = typeof defaultAttributes === 'string' ? defaultAttributes : JSON.stringify(defaultAttributes);
         const res = await runWithRetry({
             action: "updateRecord",
             sheetName: "tb_inventory_categories",
@@ -1616,6 +1651,7 @@ async function updateCategoryLocal(catId, name, desc, isActive) {
             updates: {
                 category_name: name,
                 description: desc,
+                default_attributes: attrStr,
                 is_active: isActive
             }
         });
@@ -1624,6 +1660,7 @@ async function updateCategoryLocal(catId, name, desc, isActive) {
             if (idx !== -1) {
                 appState.inventory_categories[idx].category_name = name;
                 appState.inventory_categories[idx].description = desc;
+                appState.inventory_categories[idx].default_attributes = attrStr;
                 appState.inventory_categories[idx].is_active = isActive;
             }
             hideLoading();
@@ -1980,7 +2017,7 @@ async function generateDailyDataLocal() {
     }
 }
 
-async function addHouseKeepingMasterLocal(title, description, periodType, staffIds, startDate) {
+async function addHouseKeepingMasterLocal(title, description, periodType, staffIds, startDate, idealTime) {
     showLoading("Menyimpan Master Proyek...");
     try {
         const masterId = "MAS" + Date.now().toString(36).toUpperCase();
@@ -1995,6 +2032,7 @@ async function addHouseKeepingMasterLocal(title, description, periodType, staffI
                 staff_ids: JSON.stringify(staffIds),
                 start_date: startDate,
                 last_generated_date: "",
+                ideal_time: idealTime || "",
                 is_active: true
             }
         });
@@ -2084,6 +2122,75 @@ async function updateRoomInventoryLocal(roomNumber, roomInventoryData) {
         } else {
             throw new Error(res.message || "Gagal memperbarui inventaris.");
         }
+    } catch (error) {
+        hideLoading();
+        showToast(`⚠️ Gagal: ${error.message}`, "error");
+        return false;
+    }
+}
+
+async function submitHousekeepingSubmissionLocal(projectId, description, photoFile = null) {
+    showLoading("Mengirim laporan housekeeping...");
+    try {
+        const payload = {
+            action: "submitHousekeepingSubmission",
+            projectId: projectId,
+            staffId: appState.currentUser.user_id,
+            description: description,
+            submittedAt: new Date().toISOString()
+        };
+
+        if (photoFile) {
+            const compressed = await compressImage(photoFile);
+            payload.photoBase64 = compressed.base64;
+            payload.photoName = compressed.name;
+        }
+
+        const res = await runWithRetry(payload);
+        if (res.success) {
+            hideLoading();
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: "Terkirim!",
+                    text: "Laporan housekeeping berhasil diajukan.",
+                    icon: "success",
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            } else {
+                showToast("✅ Laporan housekeeping berhasil diajukan.", "success");
+            }
+            await fetchDataFromServer();
+            return true;
+        }
+        throw new Error(res.message);
+    } catch (error) {
+        hideLoading();
+        if (typeof Swal !== 'undefined') {
+            Swal.fire("Gagal", error.message, "error");
+        } else {
+            showToast(`⚠️ Gagal: ${error.message}`, "error");
+        }
+        return false;
+    }
+}
+
+async function approveHousekeepingSubmissionLocal(submissionId, status) {
+    showLoading(status === "Approved" ? "Menyetujui laporan..." : "Menolak laporan...");
+    try {
+        const res = await runWithRetry({
+            action: "approveHousekeepingSubmission",
+            submissionId: submissionId,
+            managerId: appState.currentUser.user_id,
+            status: status
+        });
+        if (res.success) {
+            hideLoading();
+            showToast(`✅ Laporan berhasil ${status === "Approved" ? "disetujui" : "ditolak"}.`, "success");
+            await fetchDataFromServer();
+            return true;
+        }
+        throw new Error(res.message);
     } catch (error) {
         hideLoading();
         showToast(`⚠️ Gagal: ${error.message}`, "error");

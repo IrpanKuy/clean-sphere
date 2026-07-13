@@ -193,7 +193,7 @@
             <div class="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3">
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
             </div>
-            <span class="text-[13px] font-semibold text-slate-700 text-center leading-tight">Proyek Rutin</span>
+            <span class="text-[13px] font-semibold text-slate-700 text-center leading-tight">HouseKeeping<br>Project</span>
           </button>
   
           <button @click="navigate('staff-projects')" :disabled="attendanceStatus === 'Belum Absen'" :class="['flex flex-col items-center justify-center p-4 rounded-2xl border bg-white transition-all cursor-pointer', attendanceStatus === 'Belum Absen' ? 'opacity-50 border-slate-200 cursor-not-allowed' : 'border-purple-100 hover:border-purple-300 hover:shadow-md active:scale-95 shadow-sm']">
@@ -506,36 +506,177 @@
   <!-- =============================== -->
   <!-- 4. HOUSEKEEPING PROJECTS VIEW   -->
   <!-- =============================== -->
+  <!-- =============================== -->
+  <!-- 4. HOUSEKEEPING PROJECTS VIEW   -->
+  <!-- =============================== -->
   <div v-else-if="currentView === 'housekeeping-projects'" class="flex-1 flex flex-col bg-slate-50">
-    <div class="bg-primary-navy px-4 py-4 flex items-center gap-3 text-white shadow-md z-10 relative">
-      <button @click="currentView = 'dashboard'" class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
-      </button>
-      <h2 class="text-lg font-bold">Proyek Rutin</h2>
+    <div class="bg-gradient-to-r from-emerald-800 to-emerald-600 px-5 py-5 flex flex-col gap-3 text-white shadow-xl shadow-emerald-950/10 z-10 relative rounded-b-3xl">
+      <div class="flex items-center gap-4">
+        <button @click="currentView = 'dashboard'" class="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center hover:bg-white/30 transition-all active:scale-95 shadow-inner">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+        </button>
+        <div>
+          <h2 class="text-xl font-extrabold tracking-wide">HouseKeeping Projects</h2>
+          <p class="text-emerald-200 text-xs font-medium">Tugas & Tanggung Jawab Operasional</p>
+        </div>
+      </div>
+      
+      <!-- Sub-tabs -->
+      <div class="flex bg-emerald-950/30 p-1 rounded-xl mt-1">
+        <button @click="hkActiveSubTab = 'active'" :class="['flex-1 py-2 text-center text-xs font-bold rounded-lg transition-all', hkActiveSubTab === 'active' ? 'bg-white text-emerald-800 shadow-sm' : 'text-white/80 hover:text-white']">
+          Tugas Aktif
+        </button>
+        <button @click="hkActiveSubTab = 'history'" :class="['flex-1 py-2 text-center text-xs font-bold rounded-lg transition-all', hkActiveSubTab === 'history' ? 'bg-white text-emerald-800 shadow-sm' : 'text-white/80 hover:text-white']">
+          Riwayat Pengajuan
+        </button>
+      </div>
     </div>
-    <div class="p-4 flex-1 overflow-y-auto">
-      <div class="flex flex-col gap-4">
-        <div v-for="proj in dummyHouseKeeping" :key="proj.id" class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-          <div :class="['w-full h-1', proj.status === 'Selesai' ? 'bg-green-500' : 'bg-amber-400']"></div>
+
+    <!-- Active Tasks Tab -->
+    <div v-if="hkActiveSubTab === 'active'" class="p-5 flex-1 overflow-y-auto flex flex-col gap-4">
+      <div v-if="activeHousekeepingProjects.length === 0" class="flex flex-col items-center justify-center py-16 text-slate-400">
+        <svg class="w-16 h-16 text-slate-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+        <span class="text-sm font-bold">Tidak Ada Tugas Aktif</span>
+        <span class="text-xs text-slate-400 mt-1">Semua tugas housekeeping Anda hari ini telah selesai diajukan.</span>
+      </div>
+      <div v-else class="flex flex-col gap-4">
+        <div v-for="proj in activeHousekeepingProjects" :key="proj.project_id" class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden transition-all hover:shadow-md">
+          <div class="w-full h-1.5 bg-amber-400"></div>
           <div class="p-4">
             <div class="flex justify-between items-start mb-2">
-              <h3 class="font-bold text-slate-800 text-lg leading-tight">{{ proj.title }}</h3>
-              <span :class="['px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider', proj.status === 'Selesai' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700']">{{ proj.status }}</span>
+              <h3 class="font-extrabold text-slate-800 text-base leading-snug">{{ proj.title }}</h3>
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200/50">Pending</span>
             </div>
-            <p class="text-xs text-slate-500 mb-3">{{ proj.desc }}</p>
-            <div class="text-[11px] font-semibold text-slate-400 mb-4 bg-slate-50 p-2 rounded-lg">
-              Periode: {{ proj.period }} &bull; Tgl: {{ proj.date }}
+            <p class="text-xs text-slate-500 mb-3 whitespace-pre-wrap leading-relaxed">{{ proj.description || '-' }}</p>
+            
+            <div class="flex flex-col gap-1.5 text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-100 mb-4">
+              <div class="flex justify-between"><span class="text-slate-400">Batas Waktu (Ideal):</span> <span class="font-bold text-blue-600">{{ proj.ideal_time || '-' }} WIB</span></div>
+              <div class="flex justify-between"><span class="text-slate-400">Periode Tugas:</span> <span class="font-medium text-slate-700">{{ proj.type }}</span></div>
+              <div class="flex justify-between"><span class="text-slate-400">Tanggal:</span> <span class="font-medium text-slate-700">{{ proj.date }}</span></div>
             </div>
-            <div v-if="proj.status !== 'Selesai'">
-              <button @click="finishHouseKeeping(proj)" class="w-full bg-primary-royal hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg flex items-center justify-center gap-2 active:scale-95 transition-transform">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                Unggah Foto & Selesai
+
+            <button @click="openHkSubmitModal(proj)" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3 rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all shadow-sm">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+              Laporkan Selesai
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- History Tab -->
+    <div v-else class="p-5 flex-1 overflow-y-auto flex flex-col gap-4">
+      <div v-if="myHousekeepingSubmissions.length === 0" class="flex flex-col items-center justify-center py-16 text-slate-400">
+        <svg class="w-16 h-16 text-slate-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        <span class="text-sm font-bold">Belum Ada Riwayat</span>
+        <span class="text-xs text-slate-400 mt-1">Belum ada laporan penyelesaian yang dikirim oleh Anda.</span>
+      </div>
+      <div v-else class="flex flex-col gap-4">
+        <div v-for="sub in myHousekeepingSubmissions" :key="sub.submission_id" class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 transition-all hover:shadow-md">
+          <div class="flex justify-between items-start mb-2">
+            <h3 class="font-bold text-slate-800 text-sm leading-snug">{{ getProjectTitle(sub.project_id) }}</h3>
+            <span :class="['px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider', 
+              sub.status === 'Approved' ? 'bg-green-50 text-green-700 border border-green-200/50' : 
+              sub.status === 'Rejected' ? 'bg-rose-50 text-rose-700 border border-rose-200/50' : 
+              'bg-amber-50 text-amber-700 border border-amber-200/50']">
+              {{ sub.status }}
+            </span>
+          </div>
+          
+          <p class="text-xs text-slate-500 mb-3 whitespace-pre-wrap leading-relaxed">{{ sub.description || '-' }}</p>
+
+          <div class="flex flex-col gap-1.5 text-xs text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-100 mb-3">
+            <div class="flex justify-between"><span>KPI Score:</span> <span class="font-bold text-green-600">{{ sub.kpi_score }}</span></div>
+            <div class="flex justify-between"><span>Waktu Kirim:</span> <span class="font-medium text-slate-700">{{ formatDateTime(sub.submitted_at) }}</span></div>
+          </div>
+
+          <div v-if="sub.photo_url" class="rounded-xl overflow-hidden max-h-[150px] border border-slate-100 relative group cursor-pointer shadow-sm mb-2">
+            <img :src="getDisplayPhotoUrl(sub.photo_url)" class="w-full h-full object-cover max-h-[150px]" alt="Bukti Foto">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Submission Modal Overlay -->
+    <div v-if="showHkSubmitModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[999] flex justify-center items-end sm:items-center p-0 sm:p-4">
+      <div class="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-2xl shadow-2xl flex flex-col max-h-[92vh] sm:max-h-[85vh] animate-[slideUp_0.3s_ease-out]">
+        <!-- Header -->
+        <div class="px-5 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 rounded-t-2xl shrink-0">
+          <div>
+            <h3 class="font-black text-slate-800 text-base">Laporkan Selesai</h3>
+            <p class="text-xs text-slate-500 font-semibold mt-0.5 truncate max-w-[250px]">{{ hkSelectedProject?.title }}</p>
+          </div>
+          <button @click="closeHkSubmitModal" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>
+          </button>
+        </div>
+
+        <!-- Body -->
+        <div class="p-5 overflow-y-auto flex-1 flex flex-col gap-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Laporan Deskripsi Pekerjaan</label>
+            <textarea v-model="hkSubmissionDescription" placeholder="Tuliskan keterangan detail hasil pekerjaan Anda..." rows="3" class="w-full bg-slate-50 border-2 border-slate-100 rounded-xl p-3.5 text-sm font-semibold focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-50 transition-all outline-none resize-none"></textarea>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Foto Bukti (Opsional)</label>
+            <div class="grid grid-cols-2 gap-3 mb-3">
+              <button type="button" @click="triggerHkFileUpload" class="py-3 px-4 bg-slate-50 hover:bg-slate-100 border-2 border-slate-200 border-dashed rounded-xl text-slate-700 font-bold text-xs transition-all flex flex-col items-center justify-center gap-1.5 cursor-pointer">
+                <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                Pilih dari Galeri
+              </button>
+              <button type="button" @click="triggerHkCameraUpload" class="py-3 px-4 bg-slate-50 hover:bg-slate-100 border-2 border-slate-200 border-dashed rounded-xl text-slate-700 font-bold text-xs transition-all flex flex-col items-center justify-center gap-1.5 cursor-pointer">
+                <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                Ambil Foto (Kamera)
               </button>
             </div>
-            <div v-else class="text-center text-xs font-semibold text-green-600 bg-green-50 py-2 rounded-lg border border-green-200">
-              Tugas ini telah dilaporkan selesai
+
+            <!-- In-app Live WebRTC Camera Button -->
+            <button type="button" @click="openHkLiveCamera" class="w-full py-3 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100/70 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer mb-3">
+              <svg class="w-4 h-4 text-emerald-600 animate-pulse" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 5a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2h-1.586a1 1 0 01-.707-.293l-1.12-1.12A1 1 0 0011.878 3H8.122a1 1 0 00-.707.293L6.293 4.707A1 1 0 015.586 5H4zm6 9a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"></path></svg>
+              Gunakan Kamera Langsung (WebRTC)
+            </button>
+
+            <!-- Hidden Inputs -->
+            <input type="file" id="hk-file-upload-input" accept="image/*" class="hidden" @change="onHkProjectFileChange">
+            <input type="file" id="hk-camera-upload-input" accept="image/*" capture="environment" class="hidden" @change="onHkProjectFileChange">
+
+            <!-- Live Video Modal/Area -->
+            <div v-if="isHkLiveCameraOpen" class="bg-black rounded-2xl overflow-hidden relative mb-3 aspect-video flex flex-col justify-end">
+              <video id="hk-live-video-element" autoplay playsinline class="w-full h-full object-cover absolute top-0 left-0"></video>
+              <div class="absolute top-2 right-2 z-20">
+                <button type="button" @click="closeHkLiveCamera" class="w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 border-none cursor-pointer">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+              </div>
+              <div class="p-4 z-10 w-full flex justify-center bg-gradient-to-t from-black/80 to-transparent">
+                <button type="button" @click="captureHkLivePhoto" class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full font-extrabold text-xs shadow-lg shadow-emerald-500/30 border-none cursor-pointer flex items-center gap-1.5 active:scale-95 transition-all">
+                  <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 5a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2h-1.586a1 1 0 01-.707-.293l-1.12-1.12A1 1 0 0011.878 3H8.122a1 1 0 00-.707.293L6.293 4.707A1 1 0 015.586 5H4zm6 9a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"></path></svg>
+                  Ambil Gambar
+                </button>
+              </div>
+            </div>
+
+            <!-- Image Preview Card -->
+            <div v-if="hkImagePreview" class="bg-slate-50 border border-slate-100 rounded-2xl p-3 flex items-center gap-3 relative animate-[fadeIn_0.2s_ease-out] mb-3">
+              <div class="w-16 h-16 rounded-xl overflow-hidden border border-slate-200 shrink-0">
+                <img :src="hkImagePreview" class="w-full h-full object-cover">
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-xs font-bold text-slate-800 truncate">{{ hkImageFile ? hkImageFile.name : 'Foto Kamera Langsung' }}</p>
+                <p class="text-[10px] text-slate-400 font-semibold uppercase mt-0.5">{{ hkImageFile ? (hkImageFile.size / 1024).toFixed(1) + ' KB' : 'Image ready' }}</p>
+              </div>
+              <button type="button" @click="removeHkProjectImage" class="w-8 h-8 rounded-full hover:bg-slate-200/60 text-rose-500 flex items-center justify-center border-none bg-transparent cursor-pointer transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+              </button>
             </div>
           </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="px-5 py-4 border-t border-slate-100 bg-slate-50/50 rounded-b-2xl flex justify-end gap-3 shrink-0">
+          <button @click="closeHkSubmitModal" class="px-5 py-2.5 rounded-xl border-2 border-slate-200 text-slate-600 font-bold text-xs bg-white hover:bg-slate-50 transition-colors">Batal</button>
+          <button @click="submitHkProject" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs transition-colors shadow-md shadow-emerald-600/10">Kirim Pengajuan</button>
         </div>
       </div>
     </div>
@@ -1530,26 +1671,6 @@ createApp({
       });
     };
 
-    // --- Housekeeping Projects Logic ---
-    const dummyHouseKeeping = ref([
-      { id: 1, title: 'Deep Cleaning Lorong A', desc: 'Bersihkan seluruh karpet lorong timur.', period: 'Mingguan', date: '11 Jul 2026', status: 'Pending' },
-      { id: 2, title: 'Disinfektan Area Lobi', desc: 'Semprot seluruh area publik dengan disinfektan.', period: 'Harian', date: '11 Jul 2026', status: 'Selesai' }
-    ]);
-    const finishHouseKeeping = (proj) => {
-      Swal.fire({
-        title: 'Unggah Foto Dokumentasi',
-        text: 'Ambil gambar langsung dari kamera atau pilih dari galeri.',
-        icon: 'info',
-        showCancelButton: true,
-        confirmButtonText: 'Kamera / Galeri',
-        cancelButtonText: 'Batal'
-      }).then((result) => {
-        if (result.isConfirmed) {
-          Swal.fire('Terkirim!', 'Foto berhasil diunggah ke Google Drive dan tugas selesai.', 'success');
-          proj.status = 'Selesai';
-        }
-      });
-    };
 
     // --- Staff Work Projects Logic ---
     const staffProjectsList = computed(() => {
@@ -1679,6 +1800,170 @@ createApp({
       }
     };
 
+    // --- Housekeeping Projects (Revisi Konsep) ---
+    const hkActiveSubTab = ref('active');
+    const showHkSubmitModal = ref(false);
+    const hkSelectedProject = ref(null);
+    const hkSubmissionDescription = ref('');
+    const hkImageFile = ref(null);
+    const hkImagePreview = ref(null);
+    const isHkLiveCameraOpen = ref(false);
+    let hkLiveStream = null;
+
+    const getHkStaffArray = (staffIdsRaw) => {
+      if (!staffIdsRaw) return [];
+      try {
+        const arr = JSON.parse(staffIdsRaw);
+        return Array.isArray(arr) ? arr.map(String) : [String(staffIdsRaw)];
+      } catch(e) {
+        return String(staffIdsRaw).split(',').map(s => String(s.trim()));
+      }
+    };
+
+    const activeHousekeepingProjects = computed(() => {
+      if (!appState.currentUser) return [];
+      const myId = String(appState.currentUser.user_id);
+      return (appState.housekeeping_projects || []).filter(p => {
+        const staffArr = getHkStaffArray(p.staff_ids);
+        if (!staffArr.includes(myId)) return false;
+        
+        // Exclude if already submitted a pending/approved report for this project
+        const mySub = (appState.housekeeping_submissions || []).find(s => String(s.project_id) === String(p.project_id) && String(s.staff_id) === myId);
+        return !mySub || mySub.status === 'Rejected';
+      });
+    });
+
+    const myHousekeepingSubmissions = computed(() => {
+      if (!appState.currentUser) return [];
+      const myId = String(appState.currentUser.user_id);
+      return (appState.housekeeping_submissions || []).filter(s => String(s.staff_id) === myId).reverse();
+    });
+
+    const getProjectTitle = (projectId) => {
+      const p = (appState.housekeeping_projects || []).find(x => String(x.project_id) === String(projectId));
+      return p ? p.title : 'Housekeeping Project';
+    };
+
+    const formatDateTime = (isoStr) => {
+      if (!isoStr) return '-';
+      try {
+        const d = new Date(isoStr);
+        const dateStr = d.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        const timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+        return `${dateStr} ${timeStr}`;
+      } catch(e) {
+        return isoStr;
+      }
+    };
+
+    const triggerHkFileUpload = () => {
+      const el = document.getElementById('hk-file-upload-input');
+      if (el) el.click();
+    };
+
+    const triggerHkCameraUpload = () => {
+      const el = document.getElementById('hk-camera-upload-input');
+      if (el) el.click();
+    };
+
+    const onHkProjectFileChange = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      hkImageFile.value = file;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        hkImagePreview.value = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    };
+
+    const openHkLiveCamera = async () => {
+      if (hkLiveStream) {
+        closeHkLiveCamera();
+      }
+      isHkLiveCameraOpen.value = true;
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: 'environment' } 
+        });
+        hkLiveStream = stream;
+        setTimeout(() => {
+          const video = document.getElementById('hk-live-video-element');
+          if (video) {
+            video.srcObject = stream;
+            video.play();
+          }
+        }, 150);
+      } catch (err) {
+        isHkLiveCameraOpen.value = false;
+        Swal.fire({
+          icon: 'warning',
+          title: 'Akses Kamera WebRTC Gagal',
+          text: 'Browser Anda tidak mengizinkan akses kamera langsung atau tidak mendukung WebRTC. Silakan gunakan tombol "Ambil Foto (Kamera)" yang memicu kamera asli perangkat Anda.',
+          confirmButtonColor: '#10B981'
+        });
+      }
+    };
+
+    const closeHkLiveCamera = () => {
+      if (hkLiveStream) {
+        hkLiveStream.getTracks().forEach(track => track.stop());
+        hkLiveStream = null;
+      }
+      isHkLiveCameraOpen.value = false;
+    };
+
+    const captureHkLivePhoto = () => {
+      const video = document.getElementById('hk-live-video-element');
+      if (!video) return;
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const dataURL = canvas.toDataURL('image/jpeg', 0.8);
+      hkImagePreview.value = dataURL;
+      hkImageFile.value = dataURLtoBlob(dataURL, `cam_${Date.now()}.jpg`);
+      closeHkLiveCamera();
+    };
+
+    const removeHkProjectImage = () => {
+      hkImageFile.value = null;
+      hkImagePreview.value = null;
+      const in1 = document.getElementById('hk-file-upload-input');
+      const in2 = document.getElementById('hk-camera-upload-input');
+      if (in1) in1.value = "";
+      if (in2) in2.value = "";
+    };
+
+    const openHkSubmitModal = (project) => {
+      hkSelectedProject.value = project;
+      hkSubmissionDescription.value = '';
+      removeHkProjectImage();
+      showHkSubmitModal.value = true;
+    };
+
+    const closeHkSubmitModal = () => {
+      closeHkLiveCamera();
+      showHkSubmitModal.value = false;
+    };
+
+    const submitHkProject = async () => {
+      if (!hkSubmissionDescription.value) {
+        Swal.fire('Form Belum Lengkap', 'Silakan masukkan keterangan detail hasil pekerjaan.', 'warning');
+        return;
+      }
+      const success = await submitHousekeepingSubmissionLocal(
+        hkSelectedProject.value.project_id,
+        hkSubmissionDescription.value,
+        hkImageFile.value
+      );
+      if (success) {
+        showHkSubmitModal.value = false;
+        removeHkProjectImage();
+      }
+    };
+
     const getDisplayPhotoUrl = (url) => {
       if (!url) return '';
       const match = url.match(/id=([a-zA-Z0-9-_]+)/) || url.match(/\/d\/([a-zA-Z0-9-_]+)/);
@@ -1767,8 +2052,27 @@ createApp({
       changeStatusDirectly,
       getStatusName,
       // Housekeeping
-      dummyHouseKeeping,
-      finishHouseKeeping,
+      hkActiveSubTab,
+      showHkSubmitModal,
+      hkSelectedProject,
+      hkSubmissionDescription,
+      hkImageFile,
+      hkImagePreview,
+      isHkLiveCameraOpen,
+      activeHousekeepingProjects,
+      myHousekeepingSubmissions,
+      getProjectTitle,
+      formatDateTime,
+      triggerHkFileUpload,
+      triggerHkCameraUpload,
+      onHkProjectFileChange,
+      openHkLiveCamera,
+      closeHkLiveCamera,
+      captureHkLivePhoto,
+      removeHkProjectImage,
+      openHkSubmitModal,
+      closeHkSubmitModal,
+      submitHkProject,
       // Staff Projects
       staffProjectsList,
       showAddStaffProject,

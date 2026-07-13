@@ -125,11 +125,11 @@ function doPost(e) {
       case "addInventoryTransaction":
         result = handleAddInventoryTransactionAction(payload);
         break;
-      case "submitProject":
-        result = handleSubmitProjectAction(payload);
+      case "submitHousekeepingSubmission":
+        result = handleSubmitHousekeepingSubmissionAction(payload);
         break;
-      case "approveProject":
-        result = handleApproveProjectAction(payload);
+      case "approveHousekeepingSubmission":
+        result = handleApproveHousekeepingSubmissionAction(payload);
         break;
       case "submitStaffWorkProject":
         result = handleSubmitStaffWorkProjectAction(payload);
@@ -255,6 +255,7 @@ function doPost(e) {
             stock_out: 0,
             stock_current: parseInt(payload.stock_initial, 10) || 0,
             min_stock: parseInt(payload.min_stock, 10) || 5,
+            detail_spesifik: payload.detail_spesifik || "{}",
             remarks: payload.remarks || ""
           }
         });
@@ -370,14 +371,15 @@ function setupDatabase() {
     "tb_area_shifts": ["area_shift_id", "shift_name", "start_time", "end_time"],
     "tb_staff_area_tasks": ["task_id", "area_id", "area_shift_id", "staff_id"],
     "tb_area_tasks_daily": ["task_daily_id", "area_id", "area_shift_id", "staff_id", "date", "status", "remarks", "updated_by", "updated_at"],
-    "tb_inventory_categories": ["category_id", "category_name", "description", "is_active"],
+    "tb_inventory_categories": ["category_id", "category_name", "description", "default_attributes", "is_active"],
     "tb_checklist_master": ["task_id", "task_name", "task_type", "description", "is_active"],
     "tb_staff_checklist_assignments": ["assignment_id", "user_id", "task_id", "is_enabled"],
     "tb_room_checklist": ["checklist_id", "room_number", "staff_id", "date", "start_time", "end_time", "duration_minutes", "tasks_completed", "linen_changed", "refills", "status", "kpi_score"],
-    "tb_housekeeping_project_master": ["master_id", "title", "description", "period_type", "staff_ids", "start_date", "last_generated_date", "is_active"],
-    "tb_housekeeping_projects": ["project_id", "master_id", "title", "description", "type", "staff_ids", "photo_url", "date", "status", "approved_by", "approved_at"],
+    "tb_housekeeping_project_master": ["master_id", "title", "description", "period_type", "staff_ids", "start_date", "last_generated_date", "ideal_time", "is_active"],
+    "tb_housekeeping_projects": ["project_id", "master_id", "title", "description", "type", "staff_ids", "date", "ideal_time", "status"],
+    "tb_housekeeping_submissions": ["submission_id", "project_id", "staff_id", "description", "photo_url", "submitted_at", "status", "kpi_score", "approved_by", "approved_at"],
     "tb_staff_work_projects": ["work_project_id", "title", "description", "period", "staff_id", "photo_url", "date"],
-    "tb_inventory": ["item_id", "item_code", "category_id", "item_name", "stock_initial", "stock_in", "stock_out", "stock_current", "min_stock", "remarks"],
+    "tb_inventory": ["item_id", "item_code", "category_id", "item_name", "stock_initial", "stock_in", "stock_out", "stock_current", "min_stock", "detail_spesifik", "remarks"],
     "tb_inventory_transactions": ["transaction_id", "item_id", "user_id", "type", "quantity", "date", "timestamp", "remarks"]
   };
   
@@ -557,10 +559,10 @@ function seedSheetData(name) {
     sheet.appendRow(["ATD001", "AR001", "SH_M", "USR002", "2026-07-10", "Centang", "Sapu bersih", "USR002", "2026-07-10T09:00:00.000Z"]);
   }
   else if (name === "tb_inventory_categories") {
-    sheet.appendRow(["CAT001", "Linen", "Perlengkapan linen ranjang & mandi", true]);
-    sheet.appendRow(["CAT002", "Chemical", "Bahan kimia disinfektan & pembersih", true]);
-    sheet.appendRow(["CAT003", "Equipment", "Peralatan manual housekeeping", true]);
-    sheet.appendRow(["CAT004", "Refills", "Sabun cair, hand sanitizer, tisu gulung", true]);
+    sheet.appendRow(["CAT001", "Linen", "Perlengkapan linen ranjang & mandi", JSON.stringify(["Brand", "Material", "Ukuran"]), true]);
+    sheet.appendRow(["CAT002", "Chemical", "Bahan kimia disinfektan & pembersih", JSON.stringify(["Brand", "Volume", "Jenis"]), true]);
+    sheet.appendRow(["CAT003", "Equipment", "Peralatan manual housekeeping", JSON.stringify(["Brand", "Kondisi", "Tahun Beli"]), true]);
+    sheet.appendRow(["CAT004", "Refills", "Sabun cair, hand sanitizer, tisu gulung", JSON.stringify(["Brand", "Isi", "Varian"]), true]);
   } 
   else if (name === "tb_checklist_master") {
     sheet.appendRow(["TSK001", "Dusting Furnitur", "Room - Cleaning", "Mengelap debu furnitur kamar", true]);
@@ -599,10 +601,10 @@ function seedSheetData(name) {
     sheet.appendRow(["WPRJ001", "Pembersihan Taman Samping", "Pembersihan rumput liar dan daun kering", "Mingguan", "USR002", "", "2026-07-10"]);
   }
   else if (name === "tb_inventory") {
-    sheet.appendRow(["INV001", "BRG001", "CAT001", "Sprei Single Bed", 100, 10, 5, 105, 20, "Sprei katun putih single"]);
-    sheet.appendRow(["INV002", "BRG002", "CAT002", "Multi Purpose Cleaner", 50, 5, 2, 53, 10, "Pembersih serbaguna 1L"]);
-    sheet.appendRow(["INV003", "BRG003", "CAT004", "Tisu Toilet Roll", 200, 50, 15, 235, 50, "Tisu toilet gulung standard"]);
-    sheet.appendRow(["INV004", "BRG004", "CAT004", "Sabun Cair Handwash", 80, 20, 8, 92, 15, "Sabun cuci tangan botol"]);
+    sheet.appendRow(["INV001", "BRG001", "CAT001", "Sprei Single Bed", 100, 10, 5, 105, 20, JSON.stringify({"Brand":"Kingkoil","Material":"Katun","Ukuran":"Single"}), "Sprei katun putih single"]);
+    sheet.appendRow(["INV002", "BRG002", "CAT002", "Multi Purpose Cleaner", 50, 5, 2, 53, 10, JSON.stringify({"Brand":"Vixal","Volume":"1L","Jenis":"Serbaguna"}), "Pembersih serbaguna 1L"]);
+    sheet.appendRow(["INV003", "BRG003", "CAT004", "Tisu Toilet Roll", 200, 50, 15, 235, 50, JSON.stringify({"Brand":"Paseo","Isi":"6 Roll","Varian":"Emboss"}), "Tisu toilet gulung standard"]);
+    sheet.appendRow(["INV004", "BRG004", "CAT004", "Sabun Cair Handwash", 80, 20, 8, 92, 15, JSON.stringify({"Brand":"Lifebuoy","Isi":"500ml","Varian":"Fresh"}), "Sabun cuci tangan botol"]);
   }
   else if (name === "tb_inventory_transactions") {
     sheet.appendRow(["TX001", "INV001", "USR001", "in", 10, "2026-07-09", "2026-07-09T07:30:00.000Z", "Restock vendor"]);
@@ -902,6 +904,7 @@ function handleGetAllDataAction() {
     room_checklist: getSheetData("tb_room_checklist"),
     housekeeping_project_master: getSheetData("tb_housekeeping_project_master"),
     housekeeping_projects: getSheetData("tb_housekeeping_projects"),
+    housekeeping_submissions: getSheetData("tb_housekeeping_submissions"),
     staff_work_projects: getSheetData("tb_staff_work_projects"),
     inventory: getSheetData("tb_inventory"),
     inventory_transactions: getSheetData("tb_inventory_transactions")
@@ -1535,11 +1538,21 @@ function handleAddInventoryTransactionAction(payload) {
   const initial = parseInt(item.stock_initial, 10) || 0;
   const current = initial + totalIn - totalOut;
   
-  updateRowInSheet("tb_inventory", "item_id", itemId, {
+  const detailSpesifik = payload.detail_spesifik || null;
+  
+  // Build update object for stock recalculation
+  var stockUpdate = {
     stock_in: totalIn,
     stock_out: totalOut,
     stock_current: current
-  });
+  };
+  
+  // If detail_spesifik is provided, also update the item's dynamic attributes
+  if (detailSpesifik) {
+    stockUpdate.detail_spesifik = detailSpesifik;
+  }
+  
+  updateRowInSheet("tb_inventory", "item_id", itemId, stockUpdate);
   
   return { 
     success: true, 
@@ -1549,72 +1562,132 @@ function handleAddInventoryTransactionAction(payload) {
 }
 
 /**
- * Submits periodic housekeeping project report
+ * Submits housekeeping project completion request from staff
  */
-function handleSubmitProjectAction(payload) {
-  const title = payload.title;
-  const description = payload.description || "";
-  const type = payload.type;
+function handleSubmitHousekeepingSubmissionAction(payload) {
+  const projectId = payload.projectId;
   const staffId = payload.staffId;
-  const date = payload.date;
+  const description = payload.description || "";
+  const submittedAt = payload.submittedAt || new Date().toISOString();
   
-  if (!title || !type || !staffId || !date) {
-    return { success: false, message: "Parameter pengajuan projek tidak lengkap." };
+  if (!projectId || !staffId) {
+    return { success: false, message: "Parameter pengajuan laporan housekeeping tidak lengkap." };
   }
   
+  const projects = getSheetData("tb_housekeeping_projects");
+  const project = projects.find(p => p.project_id === projectId);
+  if (!project) {
+    return { success: false, message: "Tugas housekeeping project tidak ditemukan." };
+  }
+
   let photoUrl = "";
   if (payload.photoBase64 && payload.photoName) {
     try {
       photoUrl = saveFileToDrive(payload.photoBase64, payload.photoName);
     } catch (e) {
-      return { success: false, message: "Gagal menyimpan foto proyek: " + e.toString() };
+      return { success: false, message: "Gagal menyimpan foto bukti: " + e.toString() };
     }
   }
+
+  // Calculate KPI:
+  // ideal_time is either a full datetime string or a time format like "14:30"
+  let kpi = 100;
+  if (project.ideal_time) {
+    let targetTime = new Date();
+    const idealStr = String(project.ideal_time).trim();
+    if (idealStr.includes("-") || idealStr.includes("/")) {
+      targetTime = new Date(idealStr);
+    } else {
+      const projDateStr = project.date || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
+      const cleanTime = idealStr.replace(".", ":");
+      const timeParts = cleanTime.split(":");
+      const hours = parseInt(timeParts[0], 10) || 0;
+      const minutes = parseInt(timeParts[1], 10) || 0;
+      
+      const dateParts = projDateStr.split("-");
+      targetTime = new Date(
+        parseInt(dateParts[0], 10),
+        parseInt(dateParts[1], 10) - 1,
+        parseInt(dateParts[2], 10),
+        hours,
+        minutes,
+        0,
+        0
+      );
+    }
+
+    const subTime = new Date(submittedAt);
+    if (subTime > targetTime) {
+      const diffMs = subTime.getTime() - targetTime.getTime();
+      const diffMins = Math.floor(diffMs / (1000 * 60));
+      kpi = Math.max(0, 100 - (diffMins * 2));
+    }
+  }
+
+  const submissionId = "SUB" + Utilities.getUuid().substring(0, 8).toUpperCase();
   
-  const projectId = "PRJ" + Utilities.getUuid().substring(0, 8).toUpperCase();
-  
-  appendRowToSheet("tb_housekeeping_projects", {
+  appendRowToSheet("tb_housekeeping_submissions", {
+    submission_id: submissionId,
     project_id: projectId,
-    title: title,
-    description: description,
-    type: type,
     staff_id: staffId,
+    description: description,
     photo_url: photoUrl,
-    date: date,
+    submitted_at: submittedAt,
     status: "Pending",
+    kpi_score: kpi,
     approved_by: "",
     approved_at: ""
   });
+
+  // Update main project status to Done
+  updateRowInSheet("tb_housekeeping_projects", "project_id", projectId, {
+    status: "Done"
+  });
   
-  return { success: true, message: "Projek berhasil diajukan dengan ID: " + projectId, photo_url: photoUrl };
+  return { 
+    success: true, 
+    message: "Laporan housekeeping berhasil diajukan.", 
+    submission_id: submissionId, 
+    photo_url: photoUrl,
+    kpi_score: kpi
+  };
 }
 
 /**
- * Manager approves/rejects housekeeping project
+ * Manager approves/rejects housekeeping project submission
  */
-function handleApproveProjectAction(payload) {
-  const projectId = payload.projectId;
+function handleApproveHousekeepingSubmissionAction(payload) {
+  const submissionId = payload.submissionId;
   const managerId = payload.managerId;
   const status = payload.status;
   
-  if (!projectId || !managerId || !status) {
-    return { success: false, message: "Parameter persetujuan projek tidak lengkap." };
+  if (!submissionId || !managerId || !status) {
+    return { success: false, message: "Parameter persetujuan laporan tidak lengkap." };
   }
   
   const tz = getSpreadsheet().getSpreadsheetTimeZone();
   const timeStr = Utilities.formatDate(new Date(), tz, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
   
-  const success = updateRowInSheet("tb_housekeeping_projects", "project_id", projectId, {
+  const success = updateRowInSheet("tb_housekeeping_submissions", "submission_id", submissionId, {
     status: status,
     approved_by: managerId,
     approved_at: timeStr
   });
   
   if (!success) {
-    return { success: false, message: "Laporan proyek tidak ditemukan." };
+    return { success: false, message: "Laporan pengajuan tidak ditemukan." };
   }
   
-  return { success: true, message: "Laporan projek telah " + (status === "Approved" ? "disetujui." : "ditolak.") };
+  // If approved, update main project status to Approved
+  const submissions = getSheetData("tb_housekeeping_submissions");
+  const sub = submissions.find(s => s.submission_id === submissionId);
+  if (sub && status === "Approved") {
+    updateRowInSheet("tb_housekeeping_projects", "project_id", sub.project_id, {
+      status: "Approved"
+    });
+  }
+  
+  return { success: true, message: "Laporan pengajuan telah " + (status === "Approved" ? "disetujui." : "ditolak.") };
 }
 
 /**
@@ -2101,12 +2174,10 @@ function handleGenerateDailyDataAction(payload) {
             title: master.title,
             description: master.description,
             type: master.period_type,
-            staff_ids: master.staff_ids, // Multi-staff assignment
-            photo_url: "",
+            staff_ids: master.staff_ids,
             date: todayStr,
-            status: "Pending",
-            approved_by: "",
-            approved_at: ""
+            ideal_time: master.ideal_time || "",
+            status: "Pending"
           });
           
           updateRowInSheet("tb_housekeeping_project_master", "master_id", master.master_id, {

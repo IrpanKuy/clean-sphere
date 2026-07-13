@@ -96,27 +96,54 @@ const HouseKeepingProjectsView = {
             <div class="flex flex-col gap-1.5 text-xs text-slate-600 mb-4">
               <div class="flex justify-between"><span class="text-slate-400">Tgl:</span> <span class="font-medium">{{ inst.date }}</span></div>
               <div class="flex justify-between"><span class="text-slate-400">Periode:</span> <span class="font-medium">{{ inst.type }}</span></div>
+              <div class="flex justify-between"><span class="text-slate-400">Waktu Ideal:</span> <span class="font-medium text-blue-600 font-bold">{{ inst.ideal_time || '-' }} WIB</span></div>
               <div class="flex justify-between items-start">
-                <span class="text-slate-400 shrink-0">Staf:</span> 
+                <span class="text-slate-400 shrink-0">Staf Tugas:</span> 
                 <span class="font-medium text-right line-clamp-2">
                   <span v-for="sId in getStaffArray(inst.staff_ids)" :key="sId" class="after:content-[',_'] last:after:content-['']">{{ getUserName(sId) }}</span>
                 </span>
               </div>
             </div>
 
-            <div class="mt-auto border-t border-slate-100 pt-3 flex flex-col gap-2">
-              <a v-if="inst.photo_url" :href="inst.photo_url" target="_blank" class="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center justify-center gap-1.5 py-1.5 bg-blue-50 rounded-lg">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
-                Lihat Foto
-              </a>
-              <div class="flex gap-2 w-full">
-                <!-- Action Buttons for Admins/Managers to Approve or Manage -->
-                <button v-if="inst.status === 'Done'" @click="handleApprove(inst)" class="flex-1 bg-green-500 hover:bg-green-600 text-white text-xs font-semibold py-2 rounded-lg transition-colors">
-                  Approve
-                </button>
-                <button v-if="inst.status === 'Pending'" @click="handleMarkDone(inst)" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold py-2 rounded-lg transition-colors">
-                  Mark as Done
-                </button>
+            <!-- List Submissions from Staf (Multi-submission support!) -->
+            <div class="mt-auto border-t border-slate-100 pt-3">
+              <h4 class="text-xs font-bold text-slate-700 mb-2">Laporan Pengajuan Staf:</h4>
+              <div v-if="getSubmissionsForProject(inst.project_id).length === 0" class="text-xs text-slate-400 italic py-1 text-center">
+                Belum ada pengajuan.
+              </div>
+              <div v-else class="space-y-2">
+                <div v-for="sub in getSubmissionsForProject(inst.project_id)" :key="sub.submission_id" class="bg-slate-50 p-2.5 rounded-lg border border-slate-200 flex flex-col gap-1">
+                  <div class="flex justify-between items-center text-[11px]">
+                    <span class="font-bold text-slate-800">{{ getUserName(sub.staff_id) }}</span>
+                    <span :class="['px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider', 
+                      sub.status === 'Approved' ? 'bg-green-100 text-green-700' :
+                      sub.status === 'Rejected' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700']">
+                      {{ sub.status }}
+                    </span>
+                  </div>
+                  <p class="text-xs text-slate-600 font-medium whitespace-pre-wrap leading-relaxed">{{ sub.description || '-' }}</p>
+                  
+                  <div class="flex justify-between items-center text-[10px] text-slate-400 mt-1 border-t border-slate-100 pt-1.5">
+                    <span>KPI: <strong class="text-green-600 font-bold">{{ sub.kpi_score }}</strong></span>
+                    <span>Waktu: {{ formatDateTime(sub.submitted_at) }}</span>
+                  </div>
+
+                  <!-- Photo display -->
+                  <a v-if="sub.photo_url" :href="sub.photo_url" target="_blank" class="text-[11px] font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1 mt-1">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    Lihat Bukti Foto
+                  </a>
+
+                  <!-- Manager action buttons per submission -->
+                  <div v-if="sub.status === 'Pending'" class="flex gap-2 mt-2 pt-1.5 border-t border-slate-100">
+                    <button @click="approveSubmission(sub.submission_id)" class="flex-1 bg-green-600 hover:bg-green-700 text-white text-[10.5px] font-bold py-1 rounded transition-colors shadow-sm">
+                      Setujui
+                    </button>
+                    <button @click="rejectSubmission(sub.submission_id)" class="flex-1 bg-rose-600 hover:bg-rose-700 text-white text-[10.5px] font-bold py-1 rounded transition-colors shadow-sm">
+                      Tolak
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -170,7 +197,13 @@ const HouseKeepingProjectsView = {
               </div>
             </div>
 
-            <div v-if="masterForm.master_id" class="flex items-center mt-2">
+            <div class="mt-3">
+              <label class="block text-xs font-bold text-slate-700 mb-1">Waktu Ideal Selesai (Batas Jam Pengajuan, Cth: 14:30)</label>
+              <input type="time" v-model="masterForm.ideal_time" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary-royal focus:ring-1 focus:ring-primary-royal">
+              <span class="text-[10px] text-slate-400 mt-1 block">Batas jam pengajuan tugas harian untuk perhitungan KPI (keterlambatan mengurangi 2 poin per menit).</span>
+            </div>
+
+            <div v-if="masterForm.master_id" class="flex items-center mt-3">
               <label class="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" v-model="masterForm.is_active" class="rounded text-primary-royal focus:ring-primary-royal">
                 <span class="text-sm font-semibold text-slate-700">Master Proyek Aktif</span>
@@ -187,8 +220,8 @@ const HouseKeepingProjectsView = {
 
     </div>
   `,
-  props: ['subTab', 'masters', 'instances', 'users'],
-  emits: ['add-master', 'update-master', 'update-instance'],
+  props: ['subTab', 'masters', 'instances', 'submissions', 'users'],
+  emits: ['add-master', 'update-master', 'update-instance', 'approve-submission'],
   data() {
     return {
       filterDate: '',
@@ -201,6 +234,7 @@ const HouseKeepingProjectsView = {
         period_type: 'Daily',
         staff_ids: [],
         start_date: '',
+        ideal_time: '14:00',
         is_active: true
       }
     }
@@ -246,6 +280,7 @@ const HouseKeepingProjectsView = {
           period_type: master.period_type,
           staff_ids: this.getStaffArray(master.staff_ids),
           start_date: master.start_date,
+          ideal_time: master.ideal_time || '14:00',
           is_active: String(master.is_active) !== 'false'
         };
       } else {
@@ -260,6 +295,7 @@ const HouseKeepingProjectsView = {
           period_type: 'Daily',
           staff_ids: [],
           start_date: `${yyyy}-${mm}-${dd}`,
+          ideal_time: '14:00',
           is_active: true
         };
       }
@@ -280,6 +316,7 @@ const HouseKeepingProjectsView = {
           period_type: this.masterForm.period_type,
           staff_ids: JSON.stringify(this.masterForm.staff_ids),
           start_date: this.masterForm.start_date,
+          ideal_time: this.masterForm.ideal_time,
           is_active: this.masterForm.is_active
         });
       } else {
@@ -288,23 +325,35 @@ const HouseKeepingProjectsView = {
           this.masterForm.description, 
           this.masterForm.period_type, 
           this.masterForm.staff_ids, 
-          this.masterForm.start_date
+          this.masterForm.start_date,
+          this.masterForm.ideal_time
         );
       }
       this.closeMasterModal();
     },
-    handleApprove(inst) {
-      if (confirm(`Approve tugas "${inst.title}"?`)) {
-        this.$emit('update-instance', inst.project_id, {
-          status: 'Approved'
-        });
+    getSubmissionsForProject(projectId) {
+      if (!projectId) return [];
+      return (this.submissions || []).filter(s => String(s.project_id) === String(projectId));
+    },
+    approveSubmission(submissionId) {
+      if (confirm("Setujui laporan pengajuan ini?")) {
+        this.$emit('approve-submission', submissionId, 'Approved');
       }
     },
-    handleMarkDone(inst) {
-      if (confirm(`Tandai "${inst.title}" sebagai Selesai? (Tanpa foto)`)) {
-        this.$emit('update-instance', inst.project_id, {
-          status: 'Done'
-        });
+    rejectSubmission(submissionId) {
+      if (confirm("Tolak laporan pengajuan ini?")) {
+        this.$emit('approve-submission', submissionId, 'Rejected');
+      }
+    },
+    formatDateTime(isoStr) {
+      if (!isoStr) return '-';
+      try {
+        const d = new Date(isoStr);
+        const dateStr = d.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        const timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+        return `${dateStr} ${timeStr}`;
+      } catch(e) {
+        return isoStr;
       }
     }
   }

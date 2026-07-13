@@ -180,9 +180,9 @@
 
         <div v-else-if="activeSubmenu === 'housekeeping-master' || activeSubmenu === 'housekeeping-instances'">
           <housekeeping-projects-view :sub-tab="activeSubmenu" :masters="appState.housekeeping_project_master"
-            :instances="appState.housekeeping_projects" :users="appState.users"
+            :instances="appState.housekeeping_projects" :submissions="appState.housekeeping_submissions" :users="appState.users"
             @add-master="handleAddHouseKeepingMaster" @update-master="handleUpdateHouseKeepingMaster"
-            @update-instance="handleUpdateHouseKeepingProject"></housekeeping-projects-view>
+            @update-instance="handleUpdateHouseKeepingProject" @approve-submission="handleApproveSubmission"></housekeeping-projects-view>
         </div>
 
         <div v-else-if="activeSubmenu === 'staff-work-projects'">
@@ -444,14 +444,17 @@
         };
 
         // HouseKeeping & Staff Project Handlers
-        const handleAddHouseKeepingMaster = async (title, description, periodType, staffIds, startDate) => {
-          await addHouseKeepingMasterLocal(title, description, periodType, staffIds, startDate);
+        const handleAddHouseKeepingMaster = async (title, description, periodType, staffIds, startDate, idealTime) => {
+          await addHouseKeepingMasterLocal(title, description, periodType, staffIds, startDate, idealTime);
         };
         const handleUpdateHouseKeepingMaster = async (masterId, updates) => {
           await updateHouseKeepingMasterLocal(masterId, updates);
         };
         const handleUpdateHouseKeepingProject = async (projectId, updates) => {
           await updateHouseKeepingProjectLocal(projectId, updates);
+        };
+        const handleApproveSubmission = async (submissionId, status) => {
+          await approveHousekeepingSubmissionLocal(submissionId, status);
         };
         const handleAddStaffWorkProject = async (title, description, period, staffId, date, photoBase64, photoName) => {
           // Implement if needed or rely on existing
@@ -596,6 +599,7 @@
           handleAddHouseKeepingMaster,
           handleUpdateHouseKeepingMaster,
           handleUpdateHouseKeepingProject,
+          handleApproveSubmission,
           handleAddStaffWorkProject,
           handleUpdateStaffWorkProject
         };
