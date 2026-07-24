@@ -204,7 +204,10 @@ function doPost(e) {
             checklist_config: payload.checklist_config || "{}",
             remarks: payload.remarks || "",
             ideal_timer_minutes: parseInt(payload.ideal_timer_minutes, 10) || 30,
-            room_inventory: payload.room_inventory || "[]"
+            room_inventory: payload.room_inventory || "[]",
+            guest_name: payload.guest_name || "",
+            stay_start_date: payload.stay_start_date || "",
+            stay_end_date: payload.stay_end_date || ""
           }
         });
         break;
@@ -227,7 +230,10 @@ function doPost(e) {
             checklist_config: payload.checklist_config,
             remarks: payload.remarks || "",
             ideal_timer_minutes: parseInt(payload.ideal_timer_minutes, 10) || 30,
-            room_inventory: payload.room_inventory || "[]"
+            room_inventory: payload.room_inventory || "[]",
+            guest_name: payload.guest_name !== undefined ? payload.guest_name : "",
+            stay_start_date: payload.stay_start_date !== undefined ? payload.stay_start_date : "",
+            stay_end_date: payload.stay_end_date !== undefined ? payload.stay_end_date : ""
           }
         });
         break;
@@ -348,9 +354,9 @@ function setupDatabase() {
     "tb_attendance": ["attendance_id", "user_id", "shift_id", "date", "check_in_time", "check_out_time", "status", "late_checkout_minutes", "kpi_score"],
     "tb_leave_requests": ["request_id", "user_id", "leave_type", "start_date", "end_date", "reason", "proof_url", "status", "approved_by", "approved_at"],
     "tb_settings": ["setting_id", "api_key", "folder_id"],
-    "tb_rooms": ["room_number", "room_status", "last_cleaned_at", "last_cleaned_by", "last_updated", "checklist_config", "remarks", "ideal_timer_minutes", "room_inventory"],
+    "tb_rooms": ["room_number", "room_status", "last_cleaned_at", "last_cleaned_by", "last_updated", "checklist_config", "remarks", "ideal_timer_minutes", "room_inventory", "guest_name", "stay_start_date", "stay_end_date"],
     "tb_room_assignments": ["assignment_id", "date", "room_number", "staff_id", "target_status_from", "target_status_to", "remarks", "status"],
-    "tb_room_status_history": ["history_id", "room_number", "old_status", "new_status", "changed_by", "timestamp", "duration_minutes", "ideal_timer_minutes", "kpi_score"],
+    "tb_room_status_history": ["history_id", "room_number", "old_status", "new_status", "changed_by", "timestamp", "duration_minutes", "ideal_timer_minutes", "kpi_score", "guest_name", "stay_start_date", "stay_end_date"],
     "tb_room_statuses": ["status_id", "status_code", "status_name", "color_hex", "description", "is_active"],
     "tb_areas": ["area_id", "area_name", "id_number", "shift_ids", "checklist_config"],
     "tb_area_shifts": ["area_shift_id", "shift_name", "start_time", "end_time"],
@@ -487,21 +493,21 @@ if (name === "tb_users") {
       { name: "Handuk", qty: 2, min_qty: 2 },
       { name: "Tisu Toilet", qty: 1, min_qty: 1 }
     ]);
-    sheet.appendRow(["101", "VD", "2026-07-10T08:00:00.000Z", "USR002", "2026-07-10T08:00:00.000Z", defaultConfig, "Kamar Standard Lantai 1", 30, defaultInventory]);
-    sheet.appendRow(["102", "VC", "2026-07-10T08:30:00.000Z", "USR002", "2026-07-10T08:30:00.000Z", defaultConfig, "Kamar Standard Lantai 1", 30, defaultInventory]);
-    sheet.appendRow(["103", "OC", "2026-07-10T08:45:00.000Z", "USR002", "2026-07-10T08:45:00.000Z", defaultConfig, "Kamar Deluxe Lantai 1", 45, defaultInventory]);
-    sheet.appendRow(["104", "OD", "2026-07-10T09:15:00.000Z", "USR003", "2026-07-10T09:15:00.000Z", defaultConfig, "Kamar Deluxe Lantai 1", 45, defaultInventory]);
-    sheet.appendRow(["105", "VD", "", "", "2026-07-10T09:30:00.000Z", defaultConfig, "Kamar Standard Lantai 1", 30, defaultInventory]);
-    sheet.appendRow(["106", "VC", "", "", "2026-07-10T09:45:00.000Z", defaultConfig, "Kamar Standard Lantai 1", 30, defaultInventory]);
-    sheet.appendRow(["107", "DND", "", "", "2026-07-10T10:00:00.000Z", defaultConfig, "Kamar Suite VIP", 60, defaultInventory]);
-    sheet.appendRow(["108", "SR", "", "", "2026-07-10T10:15:00.000Z", defaultConfig, "Kamar Suite VIP", 60, defaultInventory]);
-    sheet.appendRow(["109", "SO", "", "", "2026-07-10T10:30:00.000Z", defaultConfig, "Kamar Standard Lantai 1", 30, defaultInventory]);
-    sheet.appendRow(["110", "NS", "", "", "2026-07-10T10:45:00.000Z", defaultConfig, "Kamar Standard Lantai 1", 30, defaultInventory]);
-    sheet.appendRow(["201", "OD", "2026-07-10T09:00:00.000Z", "USR003", "2026-07-10T09:00:00.000Z", defaultConfig, "Kamar Suite Lantai 2", 45, defaultInventory]);
-    sheet.appendRow(["202", "OOO", "", "", "2026-07-10T09:00:00.000Z", defaultConfig, "AC Rusak dalam perbaikan", 30, defaultInventory]);
-    sheet.appendRow(["203", "VD", "", "", "2026-07-10T09:00:00.000Z", defaultConfig, "Kamar Deluxe Lantai 2", 30, defaultInventory]);
-    sheet.appendRow(["204", "VC", "", "", "2026-07-10T09:00:00.000Z", defaultConfig, "Kamar Deluxe Lantai 2", 30, defaultInventory]);
-    sheet.appendRow(["205", "OOS", "", "", "2026-07-10T09:00:00.000Z", defaultConfig, "Perbaikan plafon retak", 30, defaultInventory]);
+    sheet.appendRow(["101", "VD", "2026-07-10T08:00:00.000Z", "USR002", "2026-07-10T08:00:00.000Z", defaultConfig, "Kamar Standard Lantai 1", 30, defaultInventory, "", "", ""]);
+    sheet.appendRow(["102", "VC", "2026-07-10T08:30:00.000Z", "USR002", "2026-07-10T08:30:00.000Z", defaultConfig, "Kamar Standard Lantai 1", 30, defaultInventory, "", "", ""]);
+    sheet.appendRow(["103", "OC", "2026-07-10T08:45:00.000Z", "USR002", "2026-07-10T08:45:00.000Z", defaultConfig, "Kamar Deluxe Lantai 1", 45, defaultInventory, "Bpk. Hendra", "2026-07-24", "2026-07-27"]);
+    sheet.appendRow(["104", "OD", "2026-07-10T09:15:00.000Z", "USR003", "2026-07-10T09:15:00.000Z", defaultConfig, "Kamar Deluxe Lantai 1", 45, defaultInventory, "Ibu Maya", "2026-07-23", "2026-07-26"]);
+    sheet.appendRow(["105", "VD", "", "", "2026-07-10T09:30:00.000Z", defaultConfig, "Kamar Standard Lantai 1", 30, defaultInventory, "", "", ""]);
+    sheet.appendRow(["106", "VC", "", "", "2026-07-10T09:45:00.000Z", defaultConfig, "Kamar Standard Lantai 1", 30, defaultInventory, "", "", ""]);
+    sheet.appendRow(["107", "DND", "", "", "2026-07-10T10:00:00.000Z", defaultConfig, "Kamar Suite VIP", 60, defaultInventory, "Bpk. Rahmat", "2026-07-24", "2026-07-28"]);
+    sheet.appendRow(["108", "SR", "", "", "2026-07-10T10:15:00.000Z", defaultConfig, "Kamar Suite VIP", 60, defaultInventory, "", "", ""]);
+    sheet.appendRow(["109", "SO", "", "", "2026-07-10T10:30:00.000Z", defaultConfig, "Kamar Standard Lantai 1", 30, defaultInventory, "", "", ""]);
+    sheet.appendRow(["110", "NS", "", "", "2026-07-10T10:45:00.000Z", defaultConfig, "Kamar Standard Lantai 1", 30, defaultInventory, "", "", ""]);
+    sheet.appendRow(["201", "OD", "2026-07-10T09:00:00.000Z", "USR003", "2026-07-10T09:00:00.000Z", defaultConfig, "Kamar Suite Lantai 2", 45, defaultInventory, "Dr. Anton", "2026-07-22", "2026-07-25"]);
+    sheet.appendRow(["202", "OOO", "", "", "2026-07-10T09:00:00.000Z", defaultConfig, "AC Rusak dalam perbaikan", 30, defaultInventory, "", "", ""]);
+    sheet.appendRow(["203", "VD", "", "", "2026-07-10T09:00:00.000Z", defaultConfig, "Kamar Deluxe Lantai 2", 30, defaultInventory, "", "", ""]);
+    sheet.appendRow(["204", "VC", "", "", "2026-07-10T09:00:00.000Z", defaultConfig, "Kamar Deluxe Lantai 2", 30, defaultInventory, "", "", ""]);
+    sheet.appendRow(["205", "OOS", "", "", "2026-07-10T09:00:00.000Z", defaultConfig, "Perbaikan plafon retak", 30, defaultInventory, "", "", ""]);
   } 
   else if (name === "tb_room_assignments") {
     sheet.appendRow(["ASGR001", "2026-07-09", "101", "USR002", "VD", "VC", "Pembersihan rutin", "Completed"]);
@@ -512,10 +518,10 @@ if (name === "tb_users") {
     sheet.appendRow(["ASGR006", "2026-07-11", "203", "USR003", "VD", "VC", "Rutin sore", "Pending"]);
   }
   else if (name === "tb_room_status_history") {
-    sheet.appendRow(["HIS001", "101", "VC", "VD", "USR002", "2026-07-09T08:00:00.000Z", 120, 30, 0]);
-    sheet.appendRow(["HIS002", "102", "VD", "VC", "USR003", "2026-07-10T08:30:00.000Z", 20, 30, 100]);
-    sheet.appendRow(["HIS003", "103", "OD", "OC", "USR002", "2026-07-10T08:45:00.000Z", 35, 45, 100]);
-    sheet.appendRow(["HIS004", "104", "VD", "OD", "USR003", "2026-07-10T09:15:00.000Z", 15, 45, 100]);
+    sheet.appendRow(["HIS001", "101", "VC", "VD", "USR002", "2026-07-09T08:00:00.000Z", 120, 30, 0, "", "", ""]);
+    sheet.appendRow(["HIS002", "102", "VD", "VC", "USR003", "2026-07-10T08:30:00.000Z", 20, 30, 100, "", "", ""]);
+    sheet.appendRow(["HIS003", "103", "OD", "OC", "USR002", "2026-07-10T08:45:00.000Z", 35, 45, 100, "Bpk. Hendra", "2026-07-24", "2026-07-27"]);
+    sheet.appendRow(["HIS004", "104", "VD", "OD", "USR003", "2026-07-10T09:15:00.000Z", 15, 45, 100, "Ibu Maya", "2026-07-23", "2026-07-26"]);
   }
   else if (name === "tb_room_statuses") {
     const statuses = [
@@ -1308,6 +1314,9 @@ function handleUpdateRoomStatusAction(payload) {
   const lastUpdatedLocal = payload.lastUpdatedLocal;
   const userId = payload.userId;
   const remarks = payload.remarks || "";
+  const guestName = payload.guestName || payload.guest_name || "";
+  const stayStartDate = payload.stayStartDate || payload.stay_start_date || "";
+  const stayEndDate = payload.stayEndDate || payload.stay_end_date || "";
   
   if (!roomNumber || !newStatus || !lastUpdatedLocal || !userId) {
     return { success: false, message: "Parameter pembaruan status kamar tidak lengkap." };
@@ -1337,6 +1346,10 @@ function handleUpdateRoomStatusAction(payload) {
     last_updated: nowISO,
     remarks: remarks
   };
+
+  if (guestName !== undefined) updateObj.guest_name = guestName;
+  if (stayStartDate !== undefined) updateObj.stay_start_date = stayStartDate;
+  if (stayEndDate !== undefined) updateObj.stay_end_date = stayEndDate;
   
   if (newStatus === "VC" || newStatus === "OC") {
     updateObj.last_cleaned_at = nowISO;
@@ -1363,7 +1376,10 @@ function handleUpdateRoomStatusAction(payload) {
     timestamp: nowISO,
     duration_minutes: duration,
     ideal_timer_minutes: ideal_timer,
-    kpi_score: historyKpi
+    kpi_score: historyKpi,
+    guest_name: guestName,
+    stay_start_date: stayStartDate,
+    stay_end_date: stayEndDate
   });
   
   return { 

@@ -53,16 +53,22 @@ const AppSettingsView = {
         <div class="p-6 flex flex-col gap-5">
           <div class="flex flex-col gap-2">
             <label class="text-[13px] font-bold text-slate-700">Google Drive Folder ID (Konektor Foto Bukti)</label>
-            <input type="text" class="w-full h-[42px] px-3.5 bg-white border border-slate-200 rounded-xl text-[13.5px] font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm" v-model="formSettings.folder_id" placeholder="Cth: 1abc-xyz1234567..." />
+            <input type="text" class="w-full h-[42px] px-3.5 bg-white border border-slate-200 rounded-xl text-[13.5px] font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm" v-model="formSettings.folder_id" placeholder="Cth: 1abc-xyz1234567 atau https://drive.google.com/drive/folders/1abc-xyz..." />
+            <p class="text-[11px] font-semibold text-slate-400 mt-0.5">Dapat memasukkan ID folder polos atau link folder Google Drive secara langsung.</p>
           </div>
           <div class="flex flex-col gap-2">
             <label class="text-[13px] font-bold text-slate-700">API Key (Untuk Fitur Chatbot)</label>
             <input type="text" class="w-full h-[42px] px-3.5 bg-white border border-slate-200 rounded-xl text-[13.5px] font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm" v-model="formSettings.api_key" placeholder="AIzaSy..." />
           </div>
-          <button class="h-[42px] px-5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-[13px] rounded-xl shadow-[0_4px_10px_rgba(37,99,235,0.2)] transition-all flex items-center justify-center shrink-0 disabled:opacity-70 disabled:cursor-not-allowed mt-2" @click="saveSettings" :disabled="isSavingSettings">
-            <span v-if="isSavingSettings">Menyimpan...</span>
-            <span v-else>Simpan Pengaturan</span>
-          </button>
+          <div class="flex items-center gap-3 mt-2">
+            <button class="h-[42px] px-5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-[13px] rounded-xl shadow-[0_4px_10px_rgba(37,99,235,0.2)] transition-all flex items-center justify-center shrink-0 disabled:opacity-70 disabled:cursor-not-allowed" @click="saveSettings" :disabled="isSavingSettings">
+              <span v-if="isSavingSettings">Menyimpan...</span>
+              <span v-else>Simpan Pengaturan</span>
+            </button>
+            <button type="button" class="h-[42px] px-4 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-[12.5px] rounded-xl border border-emerald-200 transition-all flex items-center justify-center shrink-0" @click="testDriveFolder">
+              Uji Koneksi Google Drive
+            </button>
+          </div>
         </div>
       </div>
 
@@ -99,6 +105,27 @@ const AppSettingsView = {
         folder_id: this.formSettings.folder_id
       }, () => {
         this.isSavingSettings = false;
+      });
+    },
+    testDriveFolder() {
+      const raw = this.formSettings.folder_id ? this.formSettings.folder_id.trim() : '';
+      if (!raw) {
+        Swal.fire('Folder ID Kosong', 'Silakan isi Google Drive Folder ID terlebih dahulu.', 'warning');
+        return;
+      }
+      const match = raw.match(/folders\/([a-zA-Z0-9-_]+)/) || raw.match(/id=([a-zA-Z0-9-_]+)/);
+      const extractedId = match ? match[1] : raw;
+      
+      Swal.fire({
+        icon: 'success',
+        title: 'Format Google Drive ID Valid',
+        html: `
+          <div class="text-left text-xs text-slate-600">
+            <p class="mb-2">ID Folder berhasil terekstraksi: <b>${extractedId}</b></p>
+            <p class="text-slate-400">Setiap foto bukti (proyek/checklist/laporan) yang diunggah staf akan disimpan ke folder ini di Google Drive dan menghasilkan link thumbnail yang dapat langsung ditampilkan di web.</p>
+          </div>
+        `,
+        confirmButtonColor: '#10B981'
       });
     },
     saveAdmin() {

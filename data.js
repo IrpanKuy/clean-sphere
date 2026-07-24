@@ -8,7 +8,7 @@
 
 // --- CONFIGURATION ---
 // REPLACE THIS URL with your deployed Google Apps Script Web App URL
-var GAS_URL = "https://script.google.com/macros/s/AKfycbxANyxlx-1yN9PebT_U6KGffzbbQJN-oI90jWoueOm9Y8UTBAe16gUaVDPLZA_QNsnR5g/exec";
+var GAS_URL = "https://script.google.com/macros/s/AKfycbxXxJtDV0-fzgX5LFagALkcmu7aE004HMqs5SexsvwkCoXb6UMwBlsJO53j7c-q1xwdNQ/exec";
 
 // --- GLOBAL VARIABLES (STATE CONTAINER) ---
 var appState = Vue.reactive({
@@ -404,7 +404,7 @@ async function clockOutUser(timeStr, dateStr) {
 /**
  * Updates room status with Optimistic UI rendering & Collision Rollback
  */
-async function updateRoomStatusLocal(roomNumber, newStatus, remarks = "") {
+async function updateRoomStatusLocal(roomNumber, newStatus, remarks = "", guestName = "", stayStartDate = "", stayEndDate = "") {
     const roomIndex = appState.rooms.findIndex(r => String(r.room_number) === String(roomNumber));
     if (roomIndex === -1) {
         showToast("Kamar tidak ditemukan secara lokal.", "error");
@@ -419,15 +419,21 @@ async function updateRoomStatusLocal(roomNumber, newStatus, remarks = "") {
             roomNumber: roomNumber,
             newStatus: newStatus,
             lastUpdatedLocal: appState.rooms[roomIndex].last_updated,
-            userId: appState.currentUser.user_id,
-            remarks: remarks
+            userId: appState.currentUser ? appState.currentUser.user_id : "USR001",
+            remarks: remarks,
+            guestName: guestName,
+            stayStartDate: stayStartDate,
+            stayEndDate: stayEndDate
         });
 
         if (res.success) {
             const oldStatus = appState.rooms[roomIndex].room_status;
             appState.rooms[roomIndex].room_status = newStatus;
             appState.rooms[roomIndex].remarks = remarks;
-            appState.rooms[roomIndex].last_updated = res.last_updated;
+            if (guestName !== undefined) appState.rooms[roomIndex].guest_name = guestName;
+            if (stayStartDate !== undefined) appState.rooms[roomIndex].stay_start_date = stayStartDate;
+            if (stayEndDate !== undefined) appState.rooms[roomIndex].stay_end_date = stayEndDate;
+            appState.rooms[roomIndex].last_updated = res.last_updated || new Date().toISOString();
 
             // Add a new entry to the room status history list locally to match
             appState.room_status_history.push({
@@ -435,9 +441,12 @@ async function updateRoomStatusLocal(roomNumber, newStatus, remarks = "") {
                 room_number: String(roomNumber),
                 old_status: oldStatus,
                 new_status: newStatus,
-                changed_by: appState.currentUser.user_id,
+                changed_by: appState.currentUser ? appState.currentUser.user_id : "USR001",
                 timestamp: new Date().toISOString(),
-                duration_minutes: 0
+                duration_minutes: 0,
+                guest_name: guestName,
+                stay_start_date: stayStartDate,
+                stay_end_date: stayEndDate
             });
 
             hideLoading();
@@ -471,7 +480,7 @@ async function updateRoomStatusLocal(roomNumber, newStatus, remarks = "") {
 /**
  * Adds a new room to database
  */
-async function addRoomLocal(roomNumber, roomStatus, checklistConfig = "{}", remarks = "", idealTimer = 30) {
+async function addRoomLocal(roomNumber, roomStatus, checklistConfig = "{}", remarks = "", idealTimer = 30, guestName = "", stayStartDate = "", stayEndDate = "") {
     showLoading("Menambahkan kamar baru...");
     try {
         const defaultInventory = JSON.stringify([
@@ -488,7 +497,10 @@ async function addRoomLocal(roomNumber, roomStatus, checklistConfig = "{}", rema
             checklist_config: typeof checklistConfig === "string" ? checklistConfig : JSON.stringify(checklistConfig),
             remarks: remarks,
             ideal_timer_minutes: idealTimer,
-            room_inventory: defaultInventory
+            room_inventory: defaultInventory,
+            guest_name: guestName,
+            stay_start_date: stayStartDate,
+            stay_end_date: stayEndDate
         });
         if (res.success) {
             // Local state mutation
@@ -499,6 +511,9 @@ async function addRoomLocal(roomNumber, roomStatus, checklistConfig = "{}", rema
                 remarks: remarks,
                 ideal_timer_minutes: idealTimer,
                 room_inventory: defaultInventory,
+                guest_name: guestName,
+                stay_start_date: stayStartDate,
+                stay_end_date: stayEndDate,
                 last_cleaned_at: "",
                 last_cleaned_by: "",
                 last_updated: new Date().toISOString()
@@ -534,7 +549,7 @@ async function addRoomLocal(roomNumber, roomStatus, checklistConfig = "{}", rema
 /**
  * Updates room number, status, checklist configuration, and remarks
  */
-async function updateRoomLocal(oldRoomNumber, newRoomNumber, roomStatus, checklistConfig = "{}", remarks = "", idealTimer = 30) {
+async function updateRoomLocal(oldRoomNumber, newRoomNumber, roomStatus, checklistConfig = "{}", remarks = "", idealTimer = 30, guestName = "", stayStartDate = "", stayEndDate = "") {
     showLoading("Menyimpan pembaruan kamar...");
     try {
         const room = appState.rooms.find(r => String(r.room_number) === String(oldRoomNumber));
@@ -548,7 +563,10 @@ async function updateRoomLocal(oldRoomNumber, newRoomNumber, roomStatus, checkli
             remarks: remarks,
             ideal_timer_minutes: idealTimer,
             room_inventory: currentInventory,
-            userId: appState.currentUser.user_id
+            userId: appState.currentUser ? appState.currentUser.user_id : "USR001",
+            guest_name: guestName,
+            stay_start_date: stayStartDate,
+            stay_end_date: stayEndDate
         });
         if (res.success) {
             // Local state mutation
@@ -559,6 +577,9 @@ async function updateRoomLocal(oldRoomNumber, newRoomNumber, roomStatus, checkli
                 appState.rooms[idx].checklist_config = typeof checklistConfig === "string" ? checklistConfig : JSON.stringify(checklistConfig);
                 appState.rooms[idx].remarks = remarks;
                 appState.rooms[idx].ideal_timer_minutes = idealTimer;
+                appState.rooms[idx].guest_name = guestName;
+                appState.rooms[idx].stay_start_date = stayStartDate;
+                appState.rooms[idx].stay_end_date = stayEndDate;
                 appState.rooms[idx].last_updated = new Date().toISOString();
             }
 
@@ -2695,4 +2716,74 @@ function getCurrentStateContext() {
         }
     };
     return JSON.stringify(context);
+}
+
+/**
+ * Calculates average KPI score per active staff member today, then averages overall
+ */
+function calculateTodayStaffAverageKpi() {
+    const todayStr = new Date().toISOString().substring(0, 10);
+    const staffMembers = (appState.users || []).filter(u => u.role === 'staff' && u.status === 'active');
+    
+    if (staffMembers.length === 0) return 0;
+    
+    const staffKpis = [];
+    
+    staffMembers.forEach(staff => {
+        const userId = staff.user_id;
+        const kpis = [];
+        
+        // 1. Today's room checklists
+        (appState.room_checklist || []).forEach(c => {
+            if (c.staff_id === userId && (c.date === todayStr || (c.timestamp && String(c.timestamp).substring(0,10) === todayStr))) {
+                if (c.kpi_score !== undefined && c.kpi_score !== null && c.kpi_score !== '') {
+                    kpis.push(Number(c.kpi_score));
+                }
+            }
+        });
+        
+        // 2. Today's status history logs
+        (appState.room_status_history || []).forEach(h => {
+            if (h.changed_by === userId && h.timestamp && String(h.timestamp).substring(0, 10) === todayStr) {
+                if (h.kpi_score !== undefined && h.kpi_score !== null && h.kpi_score !== '') {
+                    kpis.push(Number(h.kpi_score));
+                }
+            }
+        });
+        
+        // 3. Today's housekeeping submissions
+        (appState.housekeeping_submissions || []).forEach(s => {
+            if (s.staff_id === userId && s.submitted_at && String(s.submitted_at).substring(0, 10) === todayStr) {
+                if (s.kpi_score !== undefined && s.kpi_score !== null && s.kpi_score !== '') {
+                    kpis.push(Number(s.kpi_score));
+                }
+            }
+        });
+        
+        // 4. Today's attendance
+        (appState.attendance || []).forEach(a => {
+            if (a.user_id === userId && a.date === todayStr) {
+                if (a.kpi_score !== undefined && a.kpi_score !== null && a.kpi_score !== '') {
+                    kpis.push(Number(a.kpi_score));
+                }
+            }
+        });
+        
+        if (kpis.length > 0) {
+            const sum = kpis.reduce((total, val) => total + val, 0);
+            staffKpis.push(sum / kpis.length);
+        }
+    });
+    
+    if (staffKpis.length === 0) {
+        // Fallback: historical average of room_checklist or 100
+        if (appState.room_checklist && appState.room_checklist.length > 0) {
+            const total = appState.room_checklist.reduce((sum, item) => sum + (Number(item.kpi_score) || 0), 0);
+            return Math.round(total / appState.room_checklist.length);
+        }
+        return 100;
+    }
+    
+    const overallSum = staffKpis.reduce((sum, val) => sum + val, 0);
+    return Math.round(overallSum / staffKpis.length);
 }

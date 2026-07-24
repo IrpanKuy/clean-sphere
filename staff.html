@@ -253,14 +253,123 @@
       </div>
     </div>
 
+    <!-- Room Detail (Timer & Checklist) -->
+    <div v-if="selectedRoom" class="flex-1 flex flex-col bg-slate-50 animate-[fadeIn_0.2s_ease-out]">
+      <!-- Sticky Detail Header -->
+      <div class="bg-white px-5 py-4 border-b border-slate-100 shadow-sm flex justify-between items-center z-10 sticky top-0">
+        <div>
+          <button @click="selectedRoom = null" class="text-[13px] font-bold text-slate-400 hover:text-primary-royal flex items-center gap-1.5 transition-colors mb-1 border-none bg-transparent cursor-pointer">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+            Kembali
+          </button>
+          <div class="flex items-center gap-2">
+            <h3 class="font-black text-slate-800 text-2xl">Kamar {{ selectedRoom ? selectedRoom.room_number : '' }}</h3>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scrollable Content -->
+      <div class="flex-1 overflow-y-auto p-5 pb-24">
+        <!-- Top Timer & Control Card -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 mb-6 text-center flex flex-col items-center gap-3">
+          <div class="text-3xl font-mono font-black text-slate-800 tracking-wider">
+            {{ formatTimer(roomTimer) }}
+          </div>
+          
+          <button 
+            @click="isRoomTimerRunning ? stopRoomTimer() : startRoomTimer()"
+            :class="['px-6 py-3.5 rounded-xl font-extrabold text-sm border-none cursor-pointer transition-all active:scale-95 text-white shadow-md flex items-center justify-center gap-2 w-full max-w-[240px]',
+              isRoomTimerRunning 
+                ? 'bg-gradient-to-r from-rose-500 to-red-500 shadow-rose-500/20' 
+                : 'bg-gradient-to-r from-emerald-500 to-green-500 shadow-emerald-500/20']">
+            <span v-if="isRoomTimerRunning">
+              <svg class="w-4 h-4 animate-pulse inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3.5" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3.5" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"></path></svg>
+              Selesai Pembersihan
+            </span>
+            <span v-else>
+              <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3.5" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3.5" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              Mulai Timer
+            </span>
+          </button>
+
+          <div class="flex items-center gap-4 text-xs font-bold text-slate-500 mt-1">
+            <div>
+              <span class="text-slate-400 font-medium">Waktu Ideal:</span>
+              <span class="text-slate-700 ml-1">{{ selectedRoom ? selectedRoom.ideal_timer_minutes || 30 : 30 }} Menit</span>
+            </div>
+            <div class="h-3 w-px bg-slate-200"></div>
+            <div>
+              <span class="text-slate-400 font-medium">Target Status:</span>
+              <span class="px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-black ml-1 uppercase">{{ targetRoomStatus }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Forms Container (Disabled if timer is not running) -->
+        <div :class="{'opacity-50 grayscale pointer-events-none transition-all duration-300': !isRoomTimerRunning}">
+          
+          <div class="flex flex-col gap-6">
+            <div v-for="cat in localChecklist" :key="cat.category" class="bg-white rounded-2xl p-5 border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.01)] flex flex-col gap-4">
+              <div class="flex items-center justify-between border-b border-slate-50 pb-2">
+                <h4 class="text-sm font-extrabold text-slate-700 tracking-wide uppercase">{{ cat.category }}</h4>
+                <span class="text-[10px] font-extrabold px-2 py-0.5 bg-slate-100 text-slate-500 rounded-md">
+                  {{ cat.type === 'checklist' ? 'Centang' : cat.type === 'inout' ? 'Linen (In & Out)' : 'Refill (In)' }}
+                </span>
+              </div>
+              
+              <!-- Checklist Type (checkbox) -->
+              <div v-if="cat.type === 'checklist'" class="flex flex-col gap-2.5">
+                <label v-for="(item, i) in cat.items" :key="i" :class="['flex items-center gap-3 p-3.5 rounded-xl border transition-all cursor-pointer', item.val ? 'bg-blue-50/20 border-blue-200' : 'bg-slate-50/40 border-slate-100']">
+                  <div class="relative flex items-center justify-center shrink-0">
+                    <input type="checkbox" v-model="item.val" class="peer appearance-none w-5.5 h-5.5 border-2 border-slate-300 rounded-lg checked:border-blue-600 checked:bg-blue-600 transition-all cursor-pointer">
+                    <svg class="absolute w-3.5 h-3.5 text-white pointer-events-none opacity-0 peer-checked:opacity-100 peer-checked:scale-100 scale-50 transition-all duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3.5" d="M5 13l4 4L19 7"></path></svg>
+                  </div>
+                  <span class="text-xs font-bold transition-colors leading-tight" :class="item.val ? 'text-slate-500 line-through opacity-70' : 'text-slate-600'">{{ item.name }}</span>
+                </label>
+              </div>
+
+              <!-- Linen (In & Out) Type -->
+              <div v-else-if="cat.type === 'inout'" class="flex flex-col gap-4">
+                <div v-for="(item, i) in cat.items" :key="i" class="bg-slate-50/60 p-4 rounded-xl border border-slate-100 flex flex-col gap-3">
+                  <span class="text-xs font-extrabold text-slate-700">{{ item.name }}</span>
+                  <div class="grid grid-cols-2 gap-4">
+                    <div>
+                      <span class="text-[10px] font-bold text-slate-400 block mb-1 uppercase tracking-wide">Jumlah In (Bersih)</span>
+                      <input type="number" v-model.number="item.valIn" class="w-full bg-white border-2 border-slate-200 rounded-lg p-2.5 text-center text-sm font-bold text-slate-700 focus:border-primary-royal transition-all outline-none" min="0">
+                    </div>
+                    <div>
+                      <span class="text-[10px] font-bold text-slate-400 block mb-1 uppercase tracking-wide">Jumlah Out (Kotor)</span>
+                      <input type="number" v-model.number="item.valOut" class="w-full bg-white border-2 border-slate-200 rounded-lg p-2.5 text-center text-sm font-bold text-slate-700 focus:border-primary-royal transition-all outline-none" min="0">
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Refill (In) Type -->
+              <div v-else-if="cat.type === 'in'" class="grid grid-cols-2 gap-4">
+                <div v-for="(item, i) in cat.items" :key="i" class="bg-slate-50/60 p-4 rounded-xl border border-slate-100 flex flex-col gap-2">
+                  <span class="text-xs font-extrabold text-slate-600 leading-tight mb-1">{{ item.name }}</span>
+                  <div>
+                    <span class="text-[10px] font-bold text-slate-400 block mb-1 uppercase tracking-wide">Jumlah In</span>
+                    <input type="number" v-model.number="item.valIn" class="w-full bg-white border-2 border-slate-200 rounded-lg p-2.5 text-center text-sm font-bold text-slate-700 focus:border-primary-royal transition-all outline-none" min="0">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+        </div>
+      </div>
+    </div>
+
     <!-- Room List Tab Content -->
-    <div v-if="!selectedRoom && roomControlTab === 'rooms'" class="p-5 flex-1 overflow-y-auto">
+    <div v-else-if="roomControlTab === 'rooms'" class="p-5 flex-1 overflow-y-auto">
       <!-- Search Input -->
       <div class="mb-4 relative">
         <input 
           type="text" 
           v-model="roomSearchQuery" 
-          placeholder="Cari nomor kamar atau keterangan..." 
+          placeholder="Cari nomor kamar, nama tamu, atau keterangan..." 
           class="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 pl-10 text-xs font-bold text-slate-700 placeholder-slate-400 outline-none focus:border-blue-500 transition-colors shadow-[0_4px_20px_rgba(0,0,0,0.01)]">
         <svg class="absolute left-3.5 top-3.5 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
       </div>
@@ -292,7 +401,7 @@
               {{ room.room_number }}
             </div>
             <div class="flex-1 min-w-0">
-              <div class="flex flex-wrap items-center gap-2 mb-2">
+              <div class="flex flex-wrap items-center gap-2 mb-1.5">
                 <!-- Status Badge (Clickable to change status directly!) -->
                 <span 
                   @click="changeStatusDirectly(room)"
@@ -318,6 +427,15 @@
                   Ideal: {{ room.ideal_timer_minutes || 30 }} Mnt
                 </span>
               </div>
+              
+              <!-- Guest Name & Stay Duration Display -->
+              <div v-if="room.guest_name" class="bg-blue-50/60 border border-blue-100 rounded-lg px-2.5 py-1 mb-1.5 inline-block">
+                <span class="text-[11px] font-extrabold text-blue-700">Tamu: {{ room.guest_name }}</span>
+                <span v-if="room.stay_start_date || room.stay_end_date" class="text-[10px] font-semibold text-slate-500 ml-2">
+                  ({{ room.stay_start_date || '-' }} s/d {{ room.stay_end_date || '-' }})
+                </span>
+              </div>
+              
               <p class="text-xs text-slate-500 font-medium whitespace-pre-wrap leading-relaxed">Ket: {{ room.remarks || 'Tidak ada keterangan' }}</p>
             </div>
           </div>
@@ -337,13 +455,13 @@
     </div>
 
     <!-- Room History Tab Content -->
-    <div v-if="!selectedRoom && roomControlTab === 'history'" class="p-5 flex-1 overflow-y-auto">
+    <div v-else-if="roomControlTab === 'history'" class="p-5 flex-1 overflow-y-auto">
       <!-- Search Input -->
       <div class="mb-4 relative">
         <input 
           type="text" 
           v-model="historySearchQuery" 
-          placeholder="Cari nomor kamar atau status..." 
+          placeholder="Cari nomor kamar, nama tamu, atau status..." 
           class="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 pl-10 text-xs font-bold text-slate-700 placeholder-slate-400 outline-none focus:border-blue-500 transition-colors shadow-[0_4px_20px_rgba(0,0,0,0.01)]">
         <svg class="absolute left-3.5 top-3.5 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
       </div>
@@ -363,6 +481,7 @@
               <div>
                 <span class="text-[10px] text-slate-400 font-bold block">{{ new Date(his.timestamp).toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' }) }}</span>
                 <span class="text-xs text-slate-700 font-extrabold">Perubahan Status</span>
+                <span v-if="his.guest_name" class="text-[10.5px] text-blue-600 font-bold block">Tamu: {{ his.guest_name }} ({{ his.stay_start_date || '-' }} s/d {{ his.stay_end_date || '-' }})</span>
               </div>
             </div>
             <div class="flex items-center gap-2">
@@ -392,9 +511,6 @@
         </div>
       </div>
     </div>
-
-    <!-- Room Detail (Timer & Checklist) -->
-    <div v-else class="flex-1 flex flex-col bg-slate-50 animate-[fadeIn_0.2s_ease-out]">
       <!-- Sticky Detail Header -->
       <div class="bg-white px-5 py-4 border-b border-slate-100 shadow-sm flex justify-between items-center z-10 sticky top-0">
         <div>
@@ -1811,14 +1927,15 @@ createApp({
     });
 
     const changeStatusDirectly = (room) => {
+      const todayDefault = new Date().toISOString().substring(0, 10);
       Swal.fire({
         title: 'Ubah Status Kamar Langsung',
         html: `
-          <div class="text-left text-xs text-slate-500 mb-4">
-            Ubah status Kamar <b>${room.room_number}</b> secara langsung (Status Saat Ini: <b>${room.room_status}</b>)
+          <div class="text-left text-xs text-slate-500 mb-3">
+            Ubah status Kamar <b>${room.room_number}</b> (Status saat ini: <b>${room.room_status}</b>)
           </div>
           <div class="text-left mb-3">
-            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Status Baru</label>
+            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Status Baru</label>
             <select id="swal-new-status" class="w-full border border-slate-200 p-2.5 rounded-lg text-sm bg-white outline-none">
               <option value="OD" ${room.room_status === 'OD' ? 'selected' : ''}>OD - Occupied Dirty</option>
               <option value="OC" ${room.room_status === 'OC' ? 'selected' : ''}>OC - Occupied Clean</option>
@@ -1842,9 +1959,23 @@ createApp({
               <option value="COMP" ${room.room_status === 'COMP' ? 'selected' : ''}>COMP - Complimentary</option>
             </select>
           </div>
+          <div class="text-left mb-3">
+            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Nama Tamu (Opsional)</label>
+            <input type="text" id="swal-guest-name" value="${room.guest_name || ''}" placeholder="Cth: Budi Santoso" class="w-full border border-slate-200 p-2.5 rounded-lg text-sm outline-none">
+          </div>
+          <div class="grid grid-cols-2 gap-2 text-left mb-3">
+            <div>
+              <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Check-in (Opsional)</label>
+              <input type="date" id="swal-stay-start" value="${room.stay_start_date || ''}" class="w-full border border-slate-200 p-2 rounded-lg text-xs outline-none bg-white">
+            </div>
+            <div>
+              <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Check-out (Opsional)</label>
+              <input type="date" id="swal-stay-end" value="${room.stay_end_date || ''}" class="w-full border border-slate-200 p-2 rounded-lg text-xs outline-none bg-white">
+            </div>
+          </div>
           <div class="text-left">
-            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Remarks / Keterangan Perubahan</label>
-            <input type="text" id="swal-direct-remarks" placeholder="Contoh: Kamar terisi tamu baru" class="w-full border border-slate-200 p-2.5 rounded-lg text-sm outline-none">
+            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Remarks / Keterangan Perubahan</label>
+            <input type="text" id="swal-direct-remarks" value="${room.remarks || ''}" placeholder="Contoh: Kamar terisi tamu baru" class="w-full border border-slate-200 p-2.5 rounded-lg text-sm outline-none">
           </div>
         `,
         showCancelButton: true,
@@ -1855,16 +1986,19 @@ createApp({
         preConfirm: () => {
           const newStatus = document.getElementById('swal-new-status').value;
           const remarks = document.getElementById('swal-direct-remarks').value.trim();
+          const guestName = document.getElementById('swal-guest-name').value.trim();
+          const stayStartDate = document.getElementById('swal-stay-start').value;
+          const stayEndDate = document.getElementById('swal-stay-end').value;
           if (!remarks) {
             Swal.showValidationMessage('Keterangan / Remarks wajib diisi!');
             return false;
           }
-          return { newStatus, remarks };
+          return { newStatus, remarks, guestName, stayStartDate, stayEndDate };
         }
       }).then(async (result) => {
         if (result.isConfirmed) {
-          const { newStatus, remarks } = result.value;
-          await updateRoomStatusLocal(room.room_number, newStatus, remarks);
+          const { newStatus, remarks, guestName, stayStartDate, stayEndDate } = result.value;
+          await updateRoomStatusLocal(room.room_number, newStatus, remarks, guestName, stayStartDate, stayEndDate);
         }
       });
     };

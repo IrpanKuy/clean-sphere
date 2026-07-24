@@ -206,6 +206,9 @@ erDiagram
         string last_updated "ISO 8601 Timestamp (Row Versioning)"
         string checklist_config "JSON structure e.g. Cleaning/Change/Refill"
         string remarks
+        string guest_name "Nama Tamu (Opsional)"
+        string stay_start_date "Tanggal Check-in (Opsional)"
+        string stay_end_date "Tanggal Check-out (Opsional)"
     }
 
     tb_room_assignments {
@@ -227,6 +230,11 @@ erDiagram
         string changed_by FK
         string timestamp "ISO 8601 Timestamp"
         int duration_minutes
+        int ideal_timer_minutes
+        float kpi_score
+        string guest_name "Nama Tamu (Opsional)"
+        string stay_start_date "Tanggal Check-in (Opsional)"
+        string stay_end_date "Tanggal Check-out (Opsional)"
     }
 
     tb_room_statuses {

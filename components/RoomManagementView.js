@@ -12,10 +12,16 @@ const RoomManagementView = {
       quickRoomNumber: '',
       quickStatus: 'VD',
       quickRemarks: '',
+      quickGuestName: '',
+      quickStayStart: '',
+      quickStayEnd: '',
       showAddModal: false,
       newRoomNumber: '',
       newRoomStatus: 'VD',
       newRoomRemarks: '',
+      newGuestName: '',
+      newStayStart: '',
+      newStayEnd: '',
       newIdealTimer: 30,
       // Edit Modal state
       showEditModal: false,
@@ -23,6 +29,9 @@ const RoomManagementView = {
       editRoomNumberInput: '',
       editRoomStatus: 'VD',
       editRoomRemarks: '',
+      editGuestName: '',
+      editStayStart: '',
+      editStayEnd: '',
       // Static config for 10 fixed statuses
       statusConfig: {
         "OD": { name: "Occupied Dirty", color: "#FBBF24", text: "#000000" },
@@ -93,19 +102,25 @@ const RoomManagementView = {
       this.quickRoomNumber = room.room_number;
       this.quickStatus = room.room_status;
       this.quickRemarks = room.remarks || '';
+      this.quickGuestName = room.guest_name || '';
+      this.quickStayStart = room.stay_start_date || '';
+      this.quickStayEnd = room.stay_end_date || '';
     },
     submitQuickChange() {
       if (!this.quickRoomNumber) {
         Swal.fire("Peringatan", "Pilih kamar terlebih dahulu dari Grid atau dropdown.", "warning");
         return;
       }
-      this.$emit('update-status', this.quickRoomNumber, this.quickStatus, this.quickRemarks);
+      this.$emit('update-status', this.quickRoomNumber, this.quickStatus, this.quickRemarks, this.quickGuestName, this.quickStayStart, this.quickStayEnd);
     },
     openEditModal(room) {
       this.editingRoomNumber = room.room_number;
       this.editRoomNumberInput = room.room_number;
       this.editRoomStatus = room.room_status;
       this.editRoomRemarks = room.remarks || '';
+      this.editGuestName = room.guest_name || '';
+      this.editStayStart = room.stay_start_date || '';
+      this.editStayEnd = room.stay_end_date || '';
       this.editIdealTimer = room.ideal_timer_minutes || 30;
 
       let list = [];
@@ -158,8 +173,8 @@ const RoomManagementView = {
       });
       const checklistConfig = JSON.stringify(configObj);
       
-      // Emit the update event, passing editIdealTimer as well
-      this.$emit('update-room', this.editingRoomNumber, this.editRoomNumberInput, this.editRoomStatus, checklistConfig, this.editRoomRemarks, this.editIdealTimer);
+      // Emit the update event, passing editIdealTimer and guest info as well
+      this.$emit('update-room', this.editingRoomNumber, this.editRoomNumberInput, this.editRoomStatus, checklistConfig, this.editRoomRemarks, this.editIdealTimer, this.editGuestName, this.editStayStart, this.editStayEnd);
       this.showEditModal = false;
     },
     confirmDeleteRoom(roomNumber) {
@@ -194,10 +209,13 @@ const RoomManagementView = {
         }
       });
       const checklistConfig = JSON.stringify(configObj);
-      this.$emit('add-room', this.newRoomNumber, this.newRoomStatus, checklistConfig, this.newRoomRemarks, this.newIdealTimer);
+      this.$emit('add-room', this.newRoomNumber, this.newRoomStatus, checklistConfig, this.newRoomRemarks, this.newIdealTimer, this.newGuestName, this.newStayStart, this.newStayEnd);
       this.newRoomNumber = '';
       this.newRoomStatus = 'VD';
       this.newRoomRemarks = '';
+      this.newGuestName = '';
+      this.newStayStart = '';
+      this.newStayEnd = '';
       this.newIdealTimer = 30;
       this.newRoomChecklist = [
         { name: "Cleaning", type: "checklist", itemsText: "Trash, Bed Making, Floor, Toilet" },

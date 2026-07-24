@@ -338,9 +338,7 @@
         });
 
         const averageKpi = computed(() => {
-          if (appState.room_checklist.length === 0) return 0;
-          const total = appState.room_checklist.reduce((sum, item) => sum + (item.kpi_score || 0), 0);
-          return Math.round(total / appState.room_checklist.length);
+          return calculateTodayStaffAverageKpi();
         });
 
         const criticalStockAlerts = computed(() => {
@@ -479,20 +477,20 @@
         };
 
         // Room Operations Handlers
-        const handleQuickUpdateStatus = async (roomNumber, status, remarks) => {
-          await updateRoomStatusLocal(roomNumber, status, remarks);
+        const handleQuickUpdateStatus = async (roomNumber, status, remarks, guestName, stayStart, stayEnd) => {
+          await updateRoomStatusLocal(roomNumber, status, remarks, guestName, stayStart, stayEnd);
         };
 
         const handleUpdateChecklistLog = async (checklistId, tasksCompleted, linenChanged, refills, kpiScore, extraData) => {
           await updateRoomChecklistLocal(checklistId, tasksCompleted, linenChanged, refills, kpiScore, extraData);
         };
 
-        const handleAddNewRoom = async (roomNumber, status, checklistConfig, remarks, idealTimer) => {
-          await addRoomLocal(roomNumber, status, checklistConfig, remarks, idealTimer);
+        const handleAddNewRoom = async (roomNumber, status, checklistConfig, remarks, idealTimer, guestName, stayStart, stayEnd) => {
+          await addRoomLocal(roomNumber, status, checklistConfig, remarks, idealTimer, guestName, stayStart, stayEnd);
         };
 
-        const handleEditRoomDetails = async (oldRoomNumber, newRoomNumber, status, checklistConfig, remarks, idealTimer) => {
-          await updateRoomLocal(oldRoomNumber, newRoomNumber, status, checklistConfig, remarks, idealTimer);
+        const handleEditRoomDetails = async (oldRoomNumber, newRoomNumber, status, checklistConfig, remarks, idealTimer, guestName, stayStart, stayEnd) => {
+          await updateRoomLocal(oldRoomNumber, newRoomNumber, status, checklistConfig, remarks, idealTimer, guestName, stayStart, stayEnd);
         };
 
         const handleDeleteRoomDetails = async (roomNumber) => {
